@@ -1,0 +1,138 @@
+services:
+  # ==============================================================================
+  # SERVICE 1: Ollama Local Inference Engine
+  # ==============================================================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: focusflow-ollama
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - focusflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ==============================================================================
+  # SERVICE 2: Idempotent Ollama Model Initializer
+  # Pulls qwen2.5:0.5b once into persistent volume; skips if already downloaded.
+  # ==============================================================================
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: focusflow-ollama-init
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=ollama:11434
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        echo "[FocusFlow Init] Verifying local LLM weights..."
+        if ollama list | grep -q "qwen2.5:0.5b"; then
+          echo "[FocusFlow Init] Model 'qwen2.5:0.5b' already present in persistent volume. Ready."
+        else
+          echo "[FocusFlow Init] Model 'qwen2.5:0.5b' not found. Pulling from Ollama library..."
+          ollama pull qwen2.5:0.5b
+          echo "[FocusFlow Init] Model pull complete and cached."
+        fi
+    restart: "no"
+    networks:
+      - focusflow-network
+
+  # ==============================================================================
+  # SERVICE 3: FastAPI On-Device AI Backend
+  # Houses Whisper-tiny INT8, UltraFace ONNX, BGE-small embeddings, and PyMuPDF RAG.
+  # ==============================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: focusflow-backend
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+      ollama-init:
+        condition: service_completed_successfully
+    volumes:
+      # Persistent SQLite database storage
+      - focusflow_data:/app/data
+      # Persistent HuggingFace / FastEmbed ONNX weights cache
+      - model_cache:/root/.cache
+    environment:
+      - APP_NAME=FocusFlow AI API
+      - APP_VERSION=0.1.0
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DATABASE_URL=sqlite:////app/data/focusflow.db
+      - FRONTEND_URL=http://localhost
+      - CORS_ORIGINS=["http://localhost", "http://127.0.0.1", "http://localhost:5173", "http://127.0.0.1:5173"]
+      - TARGET_PLATFORM=Snapdragon AI PC
+      - DEV_ENVIRONMENT=Host CPU / x86_64
+      - AI_TARGET=host
+      - SNAPDRAGON_DEVICE=Snapdragon X Series
+      - SNAPDRAGON_NPU_RUNTIME=QNN / ONNX Runtime
+      - SNAPDRAGON_VALIDATED=false
+      - LLM_PROVIDER=development
+      - LLM_MODEL=qwen2.5:0.5b
+      - LLM_BASE_URL=http://ollama:11434
+      - LLM_TIMEOUT_SECONDS=60.0
+      - LLM_DEV_DEVICE=Host CPU (x86_64)
+      - LLM_TARGET_DEVICE=Qualcomm Hexagon NPU (Snapdragon)
+    networks:
+      - focusflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ==============================================================================
+  # SERVICE 4: Nginx Web Server & Vite React Frontend
+  # Serves compiled SPA and reverse proxies /api requests to FastAPI backend.
+  # ==============================================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: focusflow-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    networks:
+      - focusflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+# ==============================================================================
+# Persistent Volumes (Preserves SQLite DB, Ollama models, and HuggingFace cache)
+# ==============================================================================
+volumes:
+  focusflow_data:
+    name: focusflow_data
+  ollama_data:
+    name: focusflow_ollama_data
+  model_cache:
+    name: focusflow_model_cache
+
+# ==============================================================================
+# Private Internal Bridge Network
+# ==============================================================================
+networks:
+  focusflow-network:
+    name: focusflow_network
+    driver: bridge
