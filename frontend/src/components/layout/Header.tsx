@@ -6,10 +6,10 @@ import {
   Sliders,
   Menu,
   RefreshCw,
+  User,
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useApp } from '../../context/AppContext';
-import { Badge } from '../common/Badge';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -22,7 +22,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
     activeTab,
     userRole,
     setUserRole,
-    aiStatus,
+    currentUser,
+    setAuthModalOpen,
     isDemoMode,
     toggleDemoMode,
     backendConnected,
@@ -32,8 +33,20 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
 
   const titleMap: Record<string, { title: string; subtitle: string }> = {
     dashboard: {
-      title: 'Dashboard Overview',
-      subtitle: 'Evaluate less. Teach more. Private on-device intelligence.',
+      title: 'Student Dashboard',
+      subtitle: 'Personalized study progress, assigned curriculum, and local AI reasoning',
+    },
+    'student-assignments': {
+      title: 'My Course Assignments',
+      subtitle: 'Complete assigned teacher questions with typed answers and instant AI rubric evaluation',
+    },
+    'student-solve': {
+      title: 'Assignment Solver',
+      subtitle: 'Carefully answer each question below. Submitted answers are evaluated against grading rubrics.',
+    },
+    'student-result': {
+      title: 'Assessment Evaluation Result',
+      subtitle: 'Verified score, teacher feedback, concept learning gaps, and targeted AI Tutor bridge',
     },
     tutor: {
       title: 'AI Tutor',
@@ -69,52 +82,52 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
     },
     'teacher-review': {
       title: 'Teacher Submission Review',
-      subtitle: 'Human-in-the-loop OCR verification, score override, and final approval',
+      subtitle: 'Human-in-the-loop verification, score override, and final approval',
     },
     'teacher-analytics': {
-      title: 'Class Analytics & Insights',
-      subtitle: 'Topic mastery distribution, common misconceptions, and student progress',
+      title: 'Class Intelligence & Analytics',
+      subtitle: 'Calculated topic mastery, frequently missed questions, and Qwen AI teaching insights',
     },
   };
 
   const current = titleMap[activeTab] || { title: 'EvallQ', subtitle: 'Evaluate less. Teach more.' };
 
   return (
-    <header className="h-16 bg-black border-b border-white/[0.08] px-6 flex items-center justify-between z-20 transition-colors">
-      <div className="flex items-center gap-4">
+    <header className="h-16 bg-black border-b border-white/[0.08] px-4 sm:px-6 flex items-center justify-between z-20 transition-colors">
+      <div className="flex items-center gap-4 min-w-0">
         <button
           onClick={onToggleSidebar}
-          className="p-2 rounded-xl text-[#9A9A9A] hover:text-white hover:bg-white/[0.05] transition-colors"
-          title="Toggle Navigation"
+          className="p-2 rounded-xl text-[#9A9A9A] hover:text-white hover:bg-white/[0.05] transition-colors shrink-0"
+          title="Toggle Navigation Menu (☰)"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <div>
-          <h1 className="text-sm lg:text-base font-normal text-white tracking-tight">
+        <div className="min-w-0">
+          <h1 className="text-sm lg:text-base font-normal text-white tracking-tight truncate">
             {current.title}
           </h1>
-          <p className="text-xs text-[#9A9A9A] font-light hidden sm:block">
+          <p className="text-xs text-[#9A9A9A] font-light hidden sm:block truncate">
             {current.subtitle}
           </p>
         </div>
       </div>
 
       {/* Right Action & Status Area */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Backend Live Connection Status */}
         {backendLoading ? (
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.08] text-xs text-[#9A9A9A] font-light">
+          <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.08] text-xs text-[#9A9A9A] font-light">
             <RefreshCw className="w-3 h-3 animate-spin text-[#8052FF]" />
             <span className="font-mono text-[11px]">Connecting...</span>
           </div>
         ) : backendConnected ? (
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#15846E]/15 border border-[#15846E]/30 text-xs text-[#34D399] font-normal">
+          <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#15846E]/15 border border-[#15846E]/30 text-xs text-[#34D399] font-normal">
             <span className="w-1.5 h-1.5 rounded-full bg-[#15846E] animate-pulse" />
             <span className="font-mono text-[11px]">Backend Live</span>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.08] text-xs text-[#9A9A9A] font-light">
+          <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.08] text-xs text-[#9A9A9A] font-light">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
             <span className="font-mono text-[11px]">Offline</span>
             <button
@@ -127,11 +140,28 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           </div>
         )}
 
-        {/* Role Selector: Student vs Teacher */}
-        <div className="flex items-center p-1 rounded-full bg-white/[0.04] border border-white/[0.08]">
+        {/* Current User Quick Badge */}
+        <button
+          onClick={() => setAuthModalOpen(true)}
+          className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] transition-colors text-xs text-white"
+          title="Click to Switch User / Sign In"
+        >
+          <div className="w-5 h-5 rounded-full bg-[#8052FF]/20 flex items-center justify-center text-[#8052FF]">
+            <User className="w-3 h-3" />
+          </div>
+          <span className="hidden sm:inline font-medium text-xs">
+            {currentUser?.name || (userRole === 'teacher' ? 'Prof. Robert Chen' : 'Alex Rivera')}
+          </span>
+          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-white/[0.06] text-[#9A9A9A] uppercase">
+            {userRole}
+          </span>
+        </button>
+
+        {/* Role Fast Selector: Student vs Teacher */}
+        <div className="flex items-center p-0.5 rounded-full bg-white/[0.04] border border-white/[0.08]">
           <button
             onClick={() => setUserRole('student')}
-            className={`px-3.5 py-1 rounded-full text-xs transition-all tracking-tight ${
+            className={`px-2.5 sm:px-3 py-1 rounded-full text-xs transition-all tracking-tight ${
               userRole === 'student'
                 ? 'bg-[#8052FF] text-white font-medium shadow-sm'
                 : 'text-[#9A9A9A] hover:text-white font-light'
@@ -141,7 +171,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           </button>
           <button
             onClick={() => setUserRole('teacher')}
-            className={`px-3.5 py-1 rounded-full text-xs transition-all tracking-tight ${
+            className={`px-2.5 sm:px-3 py-1 rounded-full text-xs transition-all tracking-tight ${
               userRole === 'teacher'
                 ? 'bg-[#8052FF] text-white font-medium shadow-sm'
                 : 'text-[#9A9A9A] hover:text-white font-light'
@@ -152,30 +182,15 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         </div>
 
         {/* Local First Badge */}
-        <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.08] text-xs text-[#9A9A9A]">
+        <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.08] text-xs text-[#9A9A9A]">
           <WifiOff className="w-3 h-3 text-[#9A9A9A]" />
           <span className="font-mono text-[10px] tracking-wider uppercase">LOCAL FIRST</span>
         </div>
 
-        {/* Model Status Badge */}
-        {aiStatus === 'LOCAL_AI' ? (
-          <Badge variant="success" dot size="sm">
-            AI READY
-          </Badge>
-        ) : aiStatus === 'DEMO_MODE' ? (
-          <Badge variant="warning" dot size="sm">
-            DEMO
-          </Badge>
-        ) : (
-          <Badge variant="outline" size="sm">
-            STANDBY
-          </Badge>
-        )}
-
         {/* Demo Mode Toggle Button */}
         <button
           onClick={toggleDemoMode}
-          className={`px-3 py-1 text-xs font-medium rounded-full border transition-all flex items-center gap-1.5 ${
+          className={`px-2.5 sm:px-3 py-1 text-xs font-medium rounded-full border transition-all flex items-center gap-1.5 ${
             isDemoMode
               ? 'bg-[#FFB829]/15 text-[#FFB829] border-[#FFB829]/30'
               : 'bg-white/[0.03] text-[#9A9A9A] border-white/[0.08] hover:text-white hover:border-white/[0.18]'
@@ -183,7 +198,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           title="Toggle Demo Mode"
         >
           <Sliders className="w-3 h-3" />
-          <span>{isDemoMode ? 'Demo ON' : 'Demo'}</span>
+          <span className="hidden sm:inline">{isDemoMode ? 'Demo ON' : 'Demo'}</span>
         </button>
 
         {/* Theme Toggle */}

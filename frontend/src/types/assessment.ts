@@ -82,6 +82,7 @@ export interface AssessmentEvaluationResponse {
   ai_suggested_score: number;
   teacher_score?: number | null;
   final_score?: number | null;
+  teacher_feedback?: string | null;
   percentage: number;
   approval_status: string;
   questions: QuestionEvaluationResult[];

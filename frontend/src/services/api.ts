@@ -27,6 +27,14 @@ import type {
   AssignmentItem,
   TeacherReviewQueueItem,
   TeacherDashboardStats,
+  AuthResponse,
+  AuthUser,
+  StudentListItem,
+  StudentAssignmentItem,
+  StudentAssignmentDetail,
+  ClassIntelligenceData,
+  TopicDrilldownData,
+  StudentDrilldownData,
 } from '../types';
 const getApiBaseUrl = (): string => {
   const envUrl = import.meta.env.VITE_API_URL;
@@ -41,6 +49,7 @@ const API_BASE_URL = getApiBaseUrl();
 class ApiService {
   private baseUrl: string;
   private defaultTimeout: number;
+  private token: string | null = typeof window !== 'undefined' ? localStorage.getItem('evallq_auth_token') : null;
 
   constructor(baseUrl: string = API_BASE_URL, defaultTimeout: number = 4000) {
     this.baseUrl = baseUrl;
@@ -51,11 +60,28 @@ class ApiService {
     return this.baseUrl;
   }
 
+  public setAuthToken(token: string | null): void {
+    this.token = token;
+    if (typeof window !== 'undefined') {
+      if (token) {
+        localStorage.setItem('evallq_auth_token', token);
+      } else {
+        localStorage.removeItem('evallq_auth_token');
+      }
+    }
+  }
+
+  public getAuthToken(): string | null {
+    return this.token;
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}, customTimeout?: number): Promise<T> {
     const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
     const controller = new AbortController();
     const timeout = customTimeout ?? this.defaultTimeout;
     const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    const authHeaders: Record<string, string> = this.token ? { Authorization: `Bearer ${this.token}` } : {};
 
     try {
       const response = await fetch(url, {
@@ -64,6 +90,7 @@ class ApiService {
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
+          ...authHeaders,
           ...(options.headers || {}),
         },
       });
@@ -440,6 +467,7 @@ class ApiService {
       const response = await fetch(url, {
         method: 'POST',
         body: formData,
+        headers: this.token ? { Authorization: `Bearer ${this.token}` } : undefined,
         signal: controller.signal,
       });
 
@@ -575,6 +603,105 @@ class ApiService {
 
   public async getTeacherDashboardStats(): Promise<TeacherDashboardStats> {
     return this.request<TeacherDashboardStats>('/api/teacher/dashboard-stats');
+  }
+
+  public async publishAssignment(assignmentId: string): Promise<AssignmentItem> {
+    return this.request<AssignmentItem>(`/api/teacher/assignments/${encodeURIComponent(assignmentId)}/publish`, {
+      method: 'POST',
+    });
+  }
+
+  public async assignStudents(assignmentId: string, studentIds: string[]): Promise<any> {
+    return this.request<any>(`/api/teacher/assignments/${encodeURIComponent(assignmentId)}/assign`, {
+      method: 'POST',
+      body: JSON.stringify({ student_ids: studentIds }),
+    });
+  }
+
+  public async getClassIntelligence(assignmentId?: string): Promise<ClassIntelligenceData> {
+    const query = assignmentId ? `?assignment_id=${encodeURIComponent(assignmentId)}` : '';
+    return this.request<ClassIntelligenceData>(`/api/teacher/class-intelligence${query}`, {}, 60000);
+  }
+
+  public async getTopicDrilldown(topicName: string): Promise<TopicDrilldownData> {
+    return this.request<TopicDrilldownData>(`/api/teacher/class-intelligence/topic/${encodeURIComponent(topicName)}`);
+  }
+
+  public async getStudentDrilldown(studentId: string): Promise<StudentDrilldownData> {
+    return this.request<StudentDrilldownData>(`/api/teacher/class-intelligence/student/${encodeURIComponent(studentId)}`);
+  }
+
+  // =========================================================================
+  // Auth API
+  // =========================================================================
+
+  public async login(data: { email: string; password?: string; role?: string }): Promise<AuthResponse> {
+    const res = await this.request<AuthResponse>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: data.email,
+        password: data.password || (data.email.toLowerCase().includes('teacher') ? 'teacher123' : 'student123'),
+        role: data.role,
+      }),
+    });
+    if (res?.token) {
+      this.setAuthToken(res.token);
+    }
+    return res;
+  }
+
+  public async register(data: { name: string; email: string; password?: string; role: string }): Promise<AuthResponse> {
+    const res = await this.request<AuthResponse>('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: data.name,
+        email: data.email,
+        password: data.password || 'password123',
+        role: data.role,
+      }),
+    });
+    if (res?.token) {
+      this.setAuthToken(res.token);
+    }
+    return res;
+  }
+
+  public async getMe(): Promise<AuthUser> {
+    return this.request<AuthUser>('/api/auth/me');
+  }
+
+  public async getStudents(): Promise<StudentListItem[]> {
+    return this.request<StudentListItem[]>('/api/auth/students');
+  }
+
+  // =========================================================================
+  // Student Assignment API
+  // =========================================================================
+
+  public async getStudentAssignments(): Promise<StudentAssignmentItem[]> {
+    return this.request<StudentAssignmentItem[]>('/api/student/assignments');
+  }
+
+  public async getStudentAssignment(assignmentId: string): Promise<StudentAssignmentDetail> {
+    return this.request<StudentAssignmentDetail>(`/api/student/assignments/${encodeURIComponent(assignmentId)}`);
+  }
+
+  public async submitStudentAssignment(
+    assignmentId: string,
+    answers: Array<{ question_number: number; answer_text: string }>
+  ): Promise<AssessmentEvaluationResponse> {
+    return this.request<AssessmentEvaluationResponse>(
+      `/api/student/assignments/${encodeURIComponent(assignmentId)}/submit`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ answers }),
+      },
+      120000 // 120s for local Qwen evaluation
+    );
+  }
+
+  public async getStudentSubmission(submissionId: string): Promise<AssessmentEvaluationResponse> {
+    return this.request<AssessmentEvaluationResponse>(`/api/student/submissions/${encodeURIComponent(submissionId)}`);
   }
 }
 

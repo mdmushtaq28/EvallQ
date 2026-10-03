@@ -15,6 +15,8 @@ from app.api.routes.speech import router as speech_router
 from app.api.routes.analytics import router as analytics_router
 from app.api.routes.assessment import router as assessment_router
 from app.api.routes.teacher import router as teacher_router
+from app.api.routes.auth import router as auth_router
+from app.api.routes.student import router as student_router
 from app.services.ai.base import ModelNotInitializedError
 
 
@@ -80,4 +82,6 @@ app.include_router(speech_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
 app.include_router(assessment_router, prefix="/api")
 app.include_router(teacher_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
+app.include_router(student_router, prefix="/api")
 

@@ -46,7 +46,9 @@ class AssessmentSubmission(Base):
 
     # Assignment association and student identity
     assignment_id = Column(String(36), ForeignKey("assignments.id", ondelete="SET NULL"), nullable=True, index=True)
+    student_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     student_name = Column(String(100), nullable=True, default="Student")
+    submission_type = Column(String(30), nullable=False, default="scanned")  # "scanned" or "typed"
     teacher_feedback = Column(Text, nullable=True)
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

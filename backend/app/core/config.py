@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
     DATABASE_URL: str = "sqlite:///./focusflow.db"
     FRONTEND_URL: str = "http://localhost:5173"
+    SECRET_KEY: str = "evallq-secure-on-device-auth-key-2026-xyz"
 
     # CORS Configuration
     CORS_ORIGINS: List[str] = [

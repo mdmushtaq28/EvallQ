@@ -5,62 +5,75 @@ import {
   BarChart3,
   Plus,
   RefreshCw,
-  Eye,
   CheckCircle2,
   AlertTriangle,
   Award,
-  ChevronLeft,
-  ChevronRight,
   Save,
   Check,
   FileText,
   ArrowLeft,
   Users,
-  Clock,
-  GraduationCap,
   Percent,
+  Sparkles,
+  Brain,
+  HelpCircle,
 } from 'lucide-react';
 import { Card, CardHeader } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import { Badge } from '../components/common/Badge';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import type {
   AssignmentItem,
   TeacherReviewQueueItem,
   TeacherDashboardStats,
+  ClassIntelligenceData,
+  StudentListItem,
+  TopicDrilldownData,
+  StudentDrilldownData,
 } from '../types';
 
 export const TeacherDashboardPage: React.FC = () => {
-  const { activeTab, setActiveTab, selectedTeacherSubmissionId, setSelectedTeacherSubmissionId } = useApp();
+  const { activeTab, selectedTeacherSubmissionId, setSelectedTeacherSubmissionId } = useApp();
 
-  // Internal view state: dashboard, assignments, review, analytics
-  const [currentView, setCurrentView] = useState<'dashboard' | 'assignments' | 'review' | 'analytics'>('dashboard');
+  // Internal view state: dashboard (overview), assignments, review, intelligence
+  const [currentView, setCurrentView] = useState<'dashboard' | 'assignments' | 'review' | 'intelligence'>('dashboard');
 
   // Live Data States
   const [stats, setStats] = useState<TeacherDashboardStats | null>(null);
   const [assignments, setAssignments] = useState<AssignmentItem[]>([]);
   const [reviewQueue, setReviewQueue] = useState<TeacherReviewQueueItem[]>([]);
+  const [classIntelligence, setClassIntelligence] = useState<ClassIntelligenceData | null>(null);
+  const [registeredStudents, setRegisteredStudents] = useState<StudentListItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Drilldown States
+  const [topicDrilldown, setTopicDrilldown] = useState<TopicDrilldownData | null>(null);
+  const [studentDrilldown, setStudentDrilldown] = useState<StudentDrilldownData | null>(null);
+  const [, setDrilldownLoading] = useState<boolean>(false);
 
   // Assignment Modal State
   const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
   const [newTitle, setNewTitle] = useState('');
   const [newSubject, setNewSubject] = useState('');
   const [newInstructions, setNewInstructions] = useState('');
+  const [newDueDate, setNewDueDate] = useState('');
   const [newRubric, setNewRubric] = useState('');
   const [newConcepts, setNewConcepts] = useState('');
+  const [newStatus, setNewStatus] = useState<'published' | 'draft'>('published');
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [assignToAll, setAssignToAll] = useState<boolean>(true);
   const [newQuestions, setNewQuestions] = useState<Array<{
     question_number: number;
     question_text: string;
+    question_type: string;
     maximum_marks: number;
     topic: string;
     rubric?: string;
   }>>([
-    { question_number: 1, question_text: '', maximum_marks: 10, topic: 'General' },
-    { question_number: 2, question_text: '', maximum_marks: 10, topic: 'General' },
+    { question_number: 1, question_text: '', question_type: 'Subjective', maximum_marks: 10, topic: 'Computer Science', rubric: 'Clear definition and accurate explanation' },
+    { question_number: 2, question_text: '', question_type: 'Short Answer', maximum_marks: 10, topic: 'Algorithms', rubric: 'Correct time/space complexity analysis' },
   ]);
   const [creatingAssignment, setCreatingAssignment] = useState<boolean>(false);
 
@@ -90,7 +103,7 @@ export const TeacherDashboardPage: React.FC = () => {
     } else if (activeTab === 'teacher-review') {
       setCurrentView('review');
     } else if (activeTab === 'teacher-analytics') {
-      setCurrentView('analytics');
+      setCurrentView('intelligence');
     } else {
       setCurrentView('dashboard');
     }
@@ -105,18 +118,22 @@ export const TeacherDashboardPage: React.FC = () => {
     }
   }, [selectedTeacherSubmissionId]);
 
-  // Load all dashboard metrics
+  // Load all dashboard metrics & Class Intelligence
   const loadDashboardData = useCallback(async () => {
     try {
       setError(null);
-      const [statsRes, asgnRes, queueRes] = await Promise.all([
-        api.getTeacherDashboardStats(),
-        api.getAssignments(),
-        api.getTeacherReviewQueue(),
+      const [statsRes, asgnRes, queueRes, studentsRes, intelRes] = await Promise.all([
+        api.getTeacherDashboardStats().catch(() => null),
+        api.getAssignments().catch(() => []),
+        api.getTeacherReviewQueue().catch(() => []),
+        api.getStudents().catch(() => []),
+        api.getClassIntelligence().catch(() => null),
       ]);
       setStats(statsRes);
       setAssignments(asgnRes);
       setReviewQueue(queueRes);
+      setRegisteredStudents(studentsRes);
+      setClassIntelligence(intelRes);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load teacher dashboard data.');
     } finally {
@@ -195,14 +212,25 @@ export const TeacherDashboardPage: React.FC = () => {
     loadReviewSubmission(submissionId);
   };
 
+  const handlePublishAssignment = async (assignmentId: string) => {
+    try {
+      await api.publishAssignment(assignmentId);
+      loadDashboardData();
+    } catch (err: any) {
+      alert(err?.message || 'Failed to publish assignment.');
+    }
+  };
+
   const handleAddQuestionRow = () => {
     setNewQuestions(prev => [
       ...prev,
       {
         question_number: prev.length + 1,
         question_text: '',
-        maximum_marks: 5,
+        question_type: 'Subjective',
+        maximum_marks: 10,
         topic: 'General',
+        rubric: '',
       },
     ]);
   };
@@ -227,6 +255,8 @@ export const TeacherDashboardPage: React.FC = () => {
       const calculatedTotal = newQuestions.reduce((acc, q) => acc + (Number(q.maximum_marks) || 0), 0);
       const totalMarks = calculatedTotal > 0 ? calculatedTotal : 20;
 
+      const targetStudentIds = assignToAll ? ['all'] : selectedStudentIds;
+
       await api.createAssignment({
         title: newTitle.trim(),
         subject: newSubject.trim(),
@@ -235,7 +265,10 @@ export const TeacherDashboardPage: React.FC = () => {
         rubric_guidance: newRubric.trim() || undefined,
         expected_concepts: conceptsList,
         questions: newQuestions.filter(q => q.question_text.trim().length > 0),
-      });
+        status: newStatus,
+        assigned_student_ids: targetStudentIds,
+        due_date: newDueDate.trim() || undefined,
+      } as any);
 
       setShowCreateModal(false);
       setNewTitle('');
@@ -243,6 +276,9 @@ export const TeacherDashboardPage: React.FC = () => {
       setNewInstructions('');
       setNewRubric('');
       setNewConcepts('');
+      setNewDueDate('');
+      setSelectedStudentIds([]);
+      setAssignToAll(true);
       loadDashboardData();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Failed to create assignment.');
@@ -286,239 +322,232 @@ export const TeacherDashboardPage: React.FC = () => {
     }
   };
 
+  // Topic Drilldown Modal Handler
+  const openTopicDrilldown = async (topicName: string) => {
+    setDrilldownLoading(true);
+    try {
+      const data = await api.getTopicDrilldown(topicName);
+      setTopicDrilldown(data);
+    } catch (err: any) {
+      alert(err?.message || 'Could not load topic drilldown.');
+    } finally {
+      setDrilldownLoading(false);
+    }
+  };
+
+  // Student Drilldown Modal Handler
+  const openStudentDrilldown = async (studentId: string) => {
+    setDrilldownLoading(true);
+    try {
+      const data = await api.getStudentDrilldown(studentId);
+      setStudentDrilldown(data);
+    } catch (err: any) {
+      alert(err?.message || 'Could not load student drilldown.');
+    } finally {
+      setDrilldownLoading(false);
+    }
+  };
+
   if (loading && !stats && !error) {
     return (
       <div className="py-24 text-center space-y-3">
-        <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mx-auto" />
-        <p className="text-sm text-slate-500">Loading Teacher Dashboard data...</p>
+        <RefreshCw className="w-8 h-8 text-[#8052FF] animate-spin mx-auto" />
+        <p className="text-sm text-[#9A9A9A]">Loading Teacher Intelligence Suite...</p>
       </div>
     );
   }
 
   // =========================================================================
-  // VIEW: DEDICATED TWO-COLUMN REVIEWER
+  // VIEW: DEDICATED TWO-COLUMN REVIEWER (Typed + Scanned)
   // =========================================================================
-  if (currentView === 'review') {
+  if (currentView === 'review' && activeSubmissionId) {
+    const isTypedSubmission = reviewData?.submission_type === 'typed' || reviewData?.file_type === 'typed';
+
     return (
-      <div className="space-y-6 max-w-7xl mx-auto pb-12">
-        {/* Navigation / Header Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="space-y-6 max-w-7xl mx-auto pb-12 animate-fade-in">
+        {/* Navigation & Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-[#0A0A0A] border border-white/[0.08]">
           <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              icon={<ArrowLeft className="w-4 h-4" />}
+            <button
               onClick={() => {
-                setCurrentView('dashboard');
-                setActiveTab('teacher-dashboard');
+                setActiveSubmissionId(null);
                 setSelectedTeacherSubmissionId(null);
+                setCurrentView('dashboard');
               }}
+              className="p-2 rounded-xl text-[#9A9A9A] hover:text-white hover:bg-white/[0.05] transition-colors"
             >
-              Back to Dashboard
-            </Button>
+              <ArrowLeft className="w-5 h-5" />
+            </button>
             <div>
               <div className="flex items-center gap-2">
-                <Badge variant="accent" size="sm">
-                  Teacher Evaluation Studio
-                </Badge>
-                {reviewData && (
-                  <Badge
-                    variant={
-                      reviewData.approval_status === 'approved'
-                        ? 'success'
-                        : reviewData.approval_status === 'modified'
-                        ? 'brand'
-                        : 'warning'
-                    }
-                    size="sm"
-                  >
-                    {reviewData.approval_status.toUpperCase()}
-                  </Badge>
-                )}
+                <span className="text-xs font-mono uppercase text-[#8052FF]">
+                  {isTypedSubmission ? 'Typed Assessment Review' : 'Scanned Paper Review'}
+                </span>
+                <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-white/[0.05] text-white">
+                  {reviewData?.approval_status?.toUpperCase() || 'PENDING'}
+                </span>
               </div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white mt-1">
-                {reviewData ? `${reviewData.student_name} — ${reviewData.assignment_title}` : 'Submission Review'}
+              <h2 className="text-base sm:text-lg font-medium text-white tracking-tight">
+                {reviewData?.student_name || 'Student'} • {reviewData?.assignment_title || 'Assessment'}
               </h2>
             </div>
           </div>
 
-          {/* Quick Submission Selector if multiple in queue */}
-          {reviewQueue.length > 1 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500">Queue:</span>
-              <select
-                value={activeSubmissionId || ''}
-                onChange={e => handleOpenReview(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-800 dark:text-slate-200"
-              >
-                {reviewQueue.map(q => (
-                  <option key={q.id} value={q.id}>
-                    {q.student_name} - {q.assignment_title} ({q.approval_status})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="flex items-center gap-2 self-end sm:self-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<RefreshCw className={`w-3.5 h-3.5 ${reviewLoading ? 'animate-spin' : ''}`} />}
+              onClick={() => loadReviewSubmission(activeSubmissionId)}
+            >
+              Reload
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<CheckCircle2 className="w-3.5 h-3.5" />}
+              disabled={savingScore}
+              onClick={() => handleSaveScoreChanges(true)}
+            >
+              Approve Grade
+            </Button>
+          </div>
         </div>
 
-        {/* Action success alert */}
         {actionSuccessMsg && (
-          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-sm font-medium flex items-center justify-between">
-            <span>{actionSuccessMsg}</span>
-            <button onClick={() => setActionSuccessMsg(null)} className="text-xs opacity-70 hover:opacity-100">
-              ✕
-            </button>
+          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono">
+            {actionSuccessMsg}
           </div>
         )}
 
-        {reviewLoading ? (
-          <div className="p-12 text-center text-slate-500">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-indigo-500 mb-2" />
-            <p>Loading authentic submission data and student responses...</p>
-          </div>
-        ) : !reviewData ? (
-          <div className="p-12 text-center rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-            <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-            <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200">
-              No Submission Selected
-            </h3>
-            <p className="text-sm text-slate-500 mt-1 mb-4">
-              Select an item from the review queue to begin human-in-the-loop verification.
-            </p>
-            <Button variant="primary" onClick={() => setCurrentView('dashboard')}>
-              Go to Review Queue
-            </Button>
+        {reviewLoading && !reviewData ? (
+          <div className="py-24 text-center space-y-3">
+            <RefreshCw className="w-8 h-8 text-[#8052FF] animate-spin mx-auto" />
+            <p className="text-sm text-[#9A9A9A]">Loading student answers and AI evaluations...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* ================================================================= */}
-            {/* LEFT COLUMN: ORIGINAL STUDENT SUBMISSION PREVIEW & OCR */}
-            {/* ================================================================= */}
-            <div className="lg:col-span-5 space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* LEFT COLUMN: STUDENT SUBMISSION (Typed questions vs Scanned OCR) */}
+            <div className="lg:col-span-6 space-y-5">
               <Card>
                 <CardHeader
-                  title="Original Student Submission"
-                  subtitle={`${reviewData.original_filename} • Page ${reviewPage} of ${reviewData.page_count}`}
-                  icon={<FileText className="w-5 h-5 text-indigo-400" />}
-                  action={
-                    reviewData.page_count > 1 && (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={reviewPage <= 1}
-                          onClick={() => setReviewPage(p => Math.max(1, p - 1))}
-                        >
-                          <ChevronLeft className="w-4 h-4" />
-                        </Button>
-                        <span className="text-xs font-mono font-medium px-1.5 text-slate-600 dark:text-slate-300">
-                          {reviewPage} / {reviewData.page_count}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={reviewPage >= reviewData.page_count}
-                          onClick={() => setReviewPage(p => Math.min(reviewData.page_count, p + 1))}
-                        >
-                          <ChevronRight className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )
-                  }
+                  title={isTypedSubmission ? "Student's Submitted Answers" : "Original Scanned Assessment"}
+                  subtitle={isTypedSubmission ? "Direct on-platform student typed responses" : `${reviewData.original_filename} • Page ${reviewPage} of ${reviewData.page_count}`}
+                  icon={<FileText className="w-5 h-5 text-[#8052FF]" />}
                 />
 
-                {/* File Image Preview Frame */}
-                <div className="relative rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center min-h-[380px] max-h-[550px]">
-                  <img
-                    src={api.getAssessmentPreviewUrl(reviewData.submission_id, reviewPage)}
-                    alt={`Submission Page ${reviewPage}`}
-                    className="max-h-[530px] w-auto object-contain"
-                    onError={e => {
-                      // Fallback placeholder if image load fails
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                  <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded bg-black/70 backdrop-blur-sm text-[11px] font-mono text-slate-300 border border-white/10">
-                    Source: {reviewData.original_filename}
-                  </div>
-                </div>
+                {isTypedSubmission ? (
+                  /* Typed Submission Question-by-Question Viewer */
+                  <div className="space-y-4 pt-2">
+                    {reviewData?.questions?.map((q: any) => (
+                      <div key={q.id} className="p-4 rounded-xl bg-black border border-white/[0.08] space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-md bg-[#8052FF]/20 text-[#8052FF] font-mono text-xs flex items-center justify-center font-medium">
+                              Q{q.question_number}
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-white/[0.05] text-[#9A9A9A]">
+                              {q.topic}
+                            </span>
+                          </div>
+                          <span className="text-xs font-mono text-[#9A9A9A]">
+                            {q.maximum_marks} Marks
+                          </span>
+                        </div>
 
-                {/* Submission Meta & OCR Toggle & Teacher Editing */}
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between text-xs text-slate-500">
-                    <span>
-                      OCR Engine: <strong className="text-slate-700 dark:text-slate-300">Tesseract Local OCR</strong>
-                    </span>
-                    <span>
-                      Confidence: <strong className="text-emerald-500">{Math.round((reviewData.ocr_confidence || 0.95) * 100)}%</strong>
-                    </span>
-                  </div>
+                        <div className="text-xs text-white font-medium pl-1">
+                          {q.question_text}
+                        </div>
 
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 text-xs"
-                      onClick={() => setShowOcrText(!showOcrText)}
-                    >
-                      {showOcrText ? 'Hide OCR Text' : 'View Extracted OCR Text'}
-                    </Button>
-                    {showOcrText && (
-                      <Button
-                        variant={isEditingOcr ? 'secondary' : 'outline'}
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => setIsEditingOcr(!isEditingOcr)}
-                      >
-                        {isEditingOcr ? 'Cancel Edit' : 'Edit OCR'}
-                      </Button>
-                    )}
+                        <div className="p-3 rounded-lg bg-[#0A0A0A] border border-white/[0.06] text-xs text-[#DDD] leading-relaxed font-sans whitespace-pre-wrap">
+                          <p className="text-[10px] font-mono text-[#777] uppercase mb-1">Student Answer:</p>
+                          {q.student_answer || '[No answer submitted]'}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-
-                  {ocrSaveMsg && (
-                    <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
-                      {ocrSaveMsg}
+                ) : (
+                  /* Scanned OCR Document Viewer */
+                  <div className="space-y-3">
+                    <div className="relative rounded-xl overflow-hidden bg-black border border-white/[0.08] flex items-center justify-center min-h-[380px] max-h-[550px]">
+                      <img
+                        src={api.getAssessmentPreviewUrl(reviewData.submission_id, reviewPage)}
+                        alt={`Submission Page ${reviewPage}`}
+                        className="max-h-[530px] w-auto object-contain"
+                        onError={e => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                      <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded bg-black/80 backdrop-blur-sm text-[11px] font-mono text-white border border-white/10">
+                        Source: {reviewData.original_filename}
+                      </div>
                     </div>
-                  )}
 
-                  {showOcrText && (
-                    <div className="space-y-2">
-                      {isEditingOcr ? (
-                        <div className="space-y-2">
-                          <textarea
-                            rows={6}
-                            value={editableOcr}
-                            onChange={e => setEditableOcr(e.target.value)}
-                            className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-indigo-400 text-xs font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                            placeholder="Edit extracted OCR text here..."
-                          />
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            className="w-full text-xs"
-                            disabled={savingOcr}
-                            onClick={handleSaveOcrText}
-                          >
-                            {savingOcr ? 'Saving Verified OCR...' : 'Save Verified OCR Text'}
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono text-slate-700 dark:text-slate-300 max-h-48 overflow-y-auto whitespace-pre-wrap">
-                          {reviewData.verified_ocr_text || 'No raw OCR text available.'}
-                        </div>
+                    <div className="flex items-center gap-2 pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-xs"
+                        onClick={() => setShowOcrText(!showOcrText)}
+                      >
+                        {showOcrText ? 'Hide Extracted OCR' : 'View Extracted OCR Text'}
+                      </Button>
+                      {showOcrText && (
+                        <Button
+                          variant={isEditingOcr ? 'secondary' : 'outline'}
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => setIsEditingOcr(!isEditingOcr)}
+                        >
+                          {isEditingOcr ? 'Cancel' : 'Edit OCR'}
+                        </Button>
                       )}
                     </div>
-                  )}
-                </div>
+
+                    {ocrSaveMsg && (
+                      <div className="p-2 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-mono">
+                        {ocrSaveMsg}
+                      </div>
+                    )}
+
+                    {showOcrText && (
+                      <div className="space-y-2">
+                        {isEditingOcr ? (
+                          <div className="space-y-2">
+                            <textarea
+                              rows={6}
+                              value={editableOcr}
+                              onChange={e => setEditableOcr(e.target.value)}
+                              className="w-full p-2.5 rounded-lg bg-black border border-[#8052FF] text-xs font-mono text-white focus:outline-none"
+                            />
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              className="w-full text-xs"
+                              disabled={savingOcr}
+                              onClick={handleSaveOcrText}
+                            >
+                              {savingOcr ? 'Saving...' : 'Save Verified OCR'}
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="p-3 rounded-lg bg-black border border-white/[0.08] text-xs font-mono text-[#AAA] max-h-48 overflow-y-auto whitespace-pre-wrap">
+                            {reviewData.verified_ocr_text || 'No raw OCR text available.'}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </Card>
 
-              {/* Topic Performance Summary Card */}
+              {/* Topic Performance Summary */}
               {reviewData.topic_performance && Object.keys(reviewData.topic_performance).length > 0 && (
                 <Card>
                   <CardHeader
                     title="Student Topic Mastery"
-                    subtitle="Aggregated from assessment questions"
-                    icon={<BarChart3 className="w-5 h-5 text-indigo-400" />}
+                    subtitle="Evaluated performance per syllabus topic"
+                    icon={<BarChart3 className="w-5 h-5 text-[#8052FF]" />}
                   />
                   <div className="space-y-2.5 pt-1 text-xs">
                     {Object.entries(reviewData.topic_performance).map(([topic, data]: [string, any]) => {
@@ -526,13 +555,13 @@ export const TeacherDashboardPage: React.FC = () => {
                       return (
                         <div key={topic} className="space-y-1">
                           <div className="flex items-center justify-between">
-                            <span className="font-medium text-slate-800 dark:text-slate-200">{topic}</span>
-                            <span className="font-mono text-slate-500">{data.obtained} / {data.maximum} ({pct}%)</span>
+                            <span className="font-medium text-white">{topic}</span>
+                            <span className="font-mono text-[#9A9A9A]">{data.obtained} / {data.maximum} ({pct}%)</span>
                           </div>
-                          <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                          <div className="h-1.5 w-full bg-white/[0.05] rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full ${
-                                pct >= 80 ? 'bg-emerald-500' : pct >= 60 ? 'bg-indigo-500' : 'bg-rose-500'
+                                pct >= 70 ? 'bg-emerald-400' : pct >= 50 ? 'bg-[#FFB829]' : 'bg-rose-400'
                               }`}
                               style={{ width: `${pct}%` }}
                             />
@@ -545,26 +574,24 @@ export const TeacherDashboardPage: React.FC = () => {
               )}
             </div>
 
-            {/* ================================================================= */}
-            {/* RIGHT COLUMN: EVALUATION, SCORE OVERRIDE & TEACHER FEEDBACK */}
-            {/* ================================================================= */}
-            <div className="lg:col-span-7 space-y-5">
+            {/* RIGHT COLUMN: EVALUATION, SCORE OVERRIDE & TEACHER APPROVAL */}
+            <div className="lg:col-span-6 space-y-5">
               {/* Scoring Authority Banner */}
-              <div className="p-5 rounded-2xl bg-gradient-to-r from-indigo-900/40 via-slate-900 to-slate-900 border border-indigo-500/20 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="p-5 rounded-2xl bg-[#0A0A0A] border border-[#8052FF]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <span className="text-[11px] font-semibold text-indigo-400 uppercase tracking-wider block mb-1">
-                    Scoring & Teacher Authority
+                  <span className="text-[11px] font-mono text-[#8052FF] uppercase tracking-wider block mb-1">
+                    Grading Authority & Finalization
                   </span>
                   <div className="flex items-center gap-3">
                     <div>
-                      <span className="text-xs text-slate-400 block">AI Suggested Score</span>
-                      <span className="text-xl font-bold font-mono text-slate-300">
+                      <span className="text-xs text-[#9A9A9A] block">AI Suggested Score</span>
+                      <span className="text-lg font-mono font-medium text-white">
                         {reviewData.ai_suggested_score} / {reviewData.total_maximum_marks}
                       </span>
                     </div>
-                    <div className="text-slate-600 dark:text-slate-700 text-2xl font-light">→</div>
+                    <span className="text-[#555] text-xl font-light">→</span>
                     <div>
-                      <span className="text-xs text-indigo-300 block font-semibold">Teacher Final Score</span>
+                      <span className="text-xs text-[#8052FF] block font-medium">Teacher Final Score</span>
                       <div className="flex items-center gap-1.5">
                         <input
                           type="number"
@@ -573,9 +600,9 @@ export const TeacherDashboardPage: React.FC = () => {
                           max={reviewData.total_maximum_marks}
                           value={teacherScoreInput}
                           onChange={e => setTeacherScoreInput(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                          className="w-20 px-2 py-1 text-lg font-bold font-mono rounded bg-slate-800 border border-indigo-500/50 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-20 px-2 py-1 text-base font-bold font-mono rounded-lg bg-black border border-[#8052FF] text-white focus:outline-none"
                         />
-                        <span className="text-sm font-mono text-slate-400">/ {reviewData.total_maximum_marks}</span>
+                        <span className="text-xs font-mono text-[#9A9A9A]">/ {reviewData.total_maximum_marks}</span>
                       </div>
                     </div>
                   </div>
@@ -585,7 +612,7 @@ export const TeacherDashboardPage: React.FC = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    icon={<Save className="w-4 h-4" />}
+                    icon={<Save className="w-3.5 h-3.5" />}
                     disabled={savingScore}
                     onClick={() => handleSaveScoreChanges(false)}
                   >
@@ -594,170 +621,122 @@ export const TeacherDashboardPage: React.FC = () => {
                   <Button
                     variant="primary"
                     size="sm"
-                    icon={<Check className="w-4 h-4" />}
+                    icon={<Check className="w-3.5 h-3.5" />}
                     disabled={savingScore}
                     onClick={() => handleSaveScoreChanges(true)}
                   >
-                    {savingScore ? 'Saving...' : 'Approve & Finalize'}
+                    Approve
                   </Button>
                 </div>
               </div>
 
-              {/* Questions List */}
+              {/* Question Evaluations Accordion / List */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                    Question-by-Question Evaluation ({reviewData.questions?.length || 0})
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-xs font-mono uppercase tracking-wider text-[#9A9A9A]">
+                    Question Evaluations & Mark Overrides ({reviewData.questions?.length || 0})
                   </h3>
-                  <span className="text-xs text-slate-500">
-                    Adjust marks or feedback for individual questions below
-                  </span>
                 </div>
 
-                {reviewData.questions && reviewData.questions.length > 0 ? (
-                  reviewData.questions.map((q: any) => {
-                    const currentMarks = questionScores[q.id] ?? q.suggested_marks ?? 0;
-                    return (
-                      <Card key={q.id} className="border-l-4 border-l-indigo-500">
-                        <div className="space-y-3">
-                          {/* Question Header */}
-                          <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-                            <div className="flex items-center gap-2">
-                              <span className="px-2 py-0.5 rounded text-xs font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                                Question {q.question_number}
-                              </span>
-                              <span className="text-xs font-medium text-slate-500">Topic: {q.topic}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                variant={
-                                  q.rubric_match === 'Complete'
-                                    ? 'success'
-                                    : q.rubric_match === 'Incorrect'
-                                    ? 'danger'
-                                    : 'warning'
-                                }
-                                size="sm"
-                              >
-                                {q.rubric_match || 'Evaluated'}
-                              </Badge>
-                              <span className="text-xs font-mono text-slate-400">
-                                Max: {q.maximum_marks} pts
-                              </span>
-                            </div>
+                {reviewData.questions?.map((q: any) => {
+                  const currentTeacherMarks = questionScores[q.id] ?? q.teacher_marks ?? q.suggested_marks ?? 0;
+                  return (
+                    <Card key={q.id} className="p-4 space-y-3">
+                      <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-medium text-xs text-[#8052FF]">
+                            Q{q.question_number}
+                          </span>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.05] text-[#9A9A9A]">
+                            {q.topic}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.06] text-[#BBB]">
+                          Rubric Match: {q.rubric_match}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-white font-medium">{q.question_text}</p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        {q.strengths && (
+                          <div className="p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-emerald-300 text-[11px]">
+                            <strong className="block text-[10px] font-mono text-emerald-400 uppercase">Strengths</strong>
+                            {q.strengths}
                           </div>
-
-                          {/* Question Text */}
-                          <div>
-                            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
-                              Question Prompt:
-                            </span>
-                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
-                              {q.question_text}
-                            </p>
+                        )}
+                        {q.mistakes && (
+                          <div className="p-2.5 rounded-lg bg-rose-500/5 border border-rose-500/20 text-rose-300 text-[11px]">
+                            <strong className="block text-[10px] font-mono text-rose-400 uppercase">Mistakes</strong>
+                            {q.mistakes}
                           </div>
+                        )}
+                      </div>
 
-                          {/* Student OCR Answer */}
-                          <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                            <span className="text-[11px] font-semibold text-indigo-400 uppercase tracking-wider block mb-1">
-                              Student's Answer (from actual OCR):
-                            </span>
-                            <p className="text-xs font-mono text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                              {q.student_answer || '(No answer text extracted)'}
-                            </p>
-                          </div>
-
-                          {/* AI Suggested Evaluation Grid */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                            <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-                              <span className="font-semibold text-slate-500 block mb-0.5">AI Reasoning</span>
-                              <p className="text-slate-700 dark:text-slate-300">{q.reasoning || q.feedback || 'Fair demonstration of concepts.'}</p>
-                            </div>
-
-                            <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-                              <span className="font-semibold text-rose-500 dark:text-rose-400 block mb-0.5">Identified Learning Gap</span>
-                              <p className="text-slate-700 dark:text-slate-300">{q.learning_gap || 'No significant gap identified.'}</p>
-                            </div>
-                          </div>
-
-                          {/* Teacher Score Override & Feedback row */}
-                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
-                            <div>
-                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                                Teacher Marks
-                              </label>
-                              <div className="flex items-center gap-1.5">
-                                <input
-                                  type="number"
-                                  step="0.5"
-                                  min="0"
-                                  max={q.maximum_marks}
-                                  value={currentMarks}
-                                  onChange={e => {
-                                    const val = e.target.value === '' ? 0 : parseFloat(e.target.value);
-                                    setQuestionScores(prev => ({ ...prev, [q.id]: val }));
-                                    // Recalculate total
-                                    const updated = { ...questionScores, [q.id]: val };
-                                    const sum = (Object.values(updated) as number[]).reduce((a: number, b: number) => a + b, 0);
-                                    setTeacherScoreInput(Math.round(sum * 10) / 10);
-                                  }}
-                                  className="w-20 px-2 py-1 text-sm font-bold font-mono rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
-                                />
-                                <span className="text-xs text-slate-500">/ {q.maximum_marks}</span>
-                                <span className="text-[11px] text-slate-400 ml-1 font-mono">
-                                  (AI: {q.suggested_marks})
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="sm:col-span-2">
-                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                                Teacher Comments for Question
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="Add specific feedback or rubric note..."
-                                value={questionFeedbacks[q.id] || ''}
-                                onChange={e => {
-                                  const val = e.target.value;
-                                  setQuestionFeedbacks(prev => ({ ...prev, [q.id]: val }));
-                                }}
-                                className="w-full px-2.5 py-1 text-xs rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
-                              />
-                            </div>
+                      {/* Score Override & Feedback Fields */}
+                      <div className="pt-2 border-t border-white/[0.06] grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+                        <div>
+                          <label className="text-[10px] font-mono text-[#9A9A9A] uppercase block mb-1">
+                            Teacher Marks
+                          </label>
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="number"
+                              step="0.5"
+                              min="0"
+                              max={q.maximum_marks}
+                              value={currentTeacherMarks}
+                              onChange={e => {
+                                const val = parseFloat(e.target.value) || 0;
+                                setQuestionScores(prev => ({ ...prev, [q.id]: val }));
+                              }}
+                              className="w-16 px-2 py-1 text-xs font-mono font-bold rounded-lg bg-black border border-white/[0.12] text-white focus:outline-none focus:border-[#8052FF]"
+                            />
+                            <span className="text-xs font-mono text-[#777]">/ {q.maximum_marks}</span>
                           </div>
                         </div>
-                      </Card>
-                    );
-                  })
-                ) : (
-                  <div className="p-6 text-center rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-500">
-                    No questions extracted for this assessment.
-                  </div>
-                )}
+
+                        <div className="sm:col-span-2">
+                          <label className="text-[10px] font-mono text-[#9A9A9A] uppercase block mb-1">
+                            Question Comment
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Add specific guidance or correction..."
+                            value={questionFeedbacks[q.id] || ''}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setQuestionFeedbacks(prev => ({ ...prev, [q.id]: val }));
+                            }}
+                            className="w-full px-2.5 py-1 text-xs rounded-lg bg-black border border-white/[0.12] text-white placeholder-[#555] focus:outline-none focus:border-[#8052FF]"
+                          />
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
 
-              {/* Overall Teacher Feedback */}
+              {/* Overall Feedback Card */}
               <Card>
                 <CardHeader
                   title="Overall Teacher Feedback"
-                  subtitle="This feedback is visible to the student alongside their final score"
-                  icon={<Award className="w-5 h-5 text-indigo-400" />}
+                  subtitle="Visible to the student alongside their final score"
+                  icon={<Award className="w-5 h-5 text-[#8052FF]" />}
                 />
                 <div className="space-y-3 pt-1">
                   <textarea
                     rows={3}
-                    placeholder="Enter comprehensive constructive remarks for the student..."
+                    placeholder="Enter constructive remarks for the student..."
                     value={teacherFeedbackInput}
                     onChange={e => setTeacherFeedbackInput(e.target.value)}
-                    className="w-full p-3 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed"
+                    className="w-full p-3 text-xs rounded-xl bg-black border border-white/[0.1] text-white placeholder-[#555] focus:outline-none focus:border-[#8052FF]"
                   />
-
-                  <div className="flex items-center justify-end gap-3 pt-2">
+                  <div className="flex items-center justify-end gap-2 pt-1">
                     <Button
                       variant="outline"
                       size="sm"
-                      icon={<Save className="w-4 h-4" />}
+                      icon={<Save className="w-3.5 h-3.5" />}
                       disabled={savingScore}
                       onClick={() => handleSaveScoreChanges(false)}
                     >
@@ -766,11 +745,11 @@ export const TeacherDashboardPage: React.FC = () => {
                     <Button
                       variant="primary"
                       size="sm"
-                      icon={<CheckCircle2 className="w-4 h-4" />}
+                      icon={<CheckCircle2 className="w-3.5 h-3.5" />}
                       disabled={savingScore}
                       onClick={() => handleSaveScoreChanges(true)}
                     >
-                      Approve Assessment
+                      Approve Grade
                     </Button>
                   </div>
                 </div>
@@ -783,28 +762,27 @@ export const TeacherDashboardPage: React.FC = () => {
   }
 
   // =========================================================================
-  // VIEW: MAIN TEACHER DASHBOARD & ASSIGNMENTS
+  // VIEW: MAIN TEACHER DASHBOARD, ASSIGNMENTS, AND CLASS INTELLIGENCE
   // =========================================================================
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto pb-16 animate-fade-in">
       {/* Top Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-900/60 via-slate-900 to-slate-900 border border-indigo-500/20 p-6 lg:p-8">
+      <div className="relative overflow-hidden rounded-2xl bg-[#0A0A0A] border border-white/[0.08] p-6 sm:p-8">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#8052FF]/10 rounded-full blur-3xl pointer-events-none" />
+
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1.5">
-                <GraduationCap className="w-3.5 h-3.5" />
-                Instructor Intelligence Suite
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase bg-[#8052FF]/20 text-[#8052FF] border border-[#8052FF]/30">
+                Instructor Suite
               </span>
-              <Badge variant="accent" size="sm">
-                TEACHER MODE
-              </Badge>
+              <span className="text-xs text-[#9A9A9A] font-light">Class Intelligence & Grading</span>
             </div>
-            <h2 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
-              Classroom Assessment Operations
-            </h2>
-            <p className="mt-1 text-sm text-slate-300 font-medium">
-              Review AI-evaluated student assessments, override scoring, and design curriculum rubrics.
+            <h1 className="text-2xl sm:text-3xl font-medium text-white tracking-tight">
+              Teacher Assessment & Intelligence Operations
+            </h1>
+            <p className="text-xs sm:text-sm text-[#9A9A9A] mt-1 font-light max-w-2xl">
+              Create curriculum assessments with targeted questions, assign to specific students, evaluate typed responses with on-device Qwen AI, and inspect real calculated class mastery.
             </p>
           </div>
 
@@ -812,7 +790,7 @@ export const TeacherDashboardPage: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              icon={<RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />}
+              icon={<RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />}
               onClick={handleRefresh}
             >
               Refresh
@@ -820,351 +798,487 @@ export const TeacherDashboardPage: React.FC = () => {
             <Button
               variant="primary"
               size="sm"
-              icon={<Plus className="w-4 h-4" />}
+              icon={<Plus className="w-3.5 h-3.5" />}
               onClick={() => setShowCreateModal(true)}
             >
-              Create Assignment
+              New Assignment
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Error Notice */}
-      {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-300 text-sm flex items-center justify-between">
-          <span>{error}</span>
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
-            Retry
-          </Button>
+      {/* Sub Navigation Tabs */}
+      <div className="flex items-center gap-2 p-1 bg-[#0A0A0A] border border-white/[0.08] rounded-xl self-start w-fit">
+        <button
+          onClick={() => setCurrentView('dashboard')}
+          className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${
+            currentView === 'dashboard'
+              ? 'bg-[#8052FF] text-white shadow-sm'
+              : 'text-[#9A9A9A] hover:text-white'
+          }`}
+        >
+          Overview & Review Queue
+        </button>
+        <button
+          onClick={() => setCurrentView('assignments')}
+          className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${
+            currentView === 'assignments'
+              ? 'bg-[#8052FF] text-white shadow-sm'
+              : 'text-[#9A9A9A] hover:text-white'
+          }`}
+        >
+          Assignments ({assignments.length})
+        </button>
+        <button
+          onClick={() => setCurrentView('intelligence')}
+          className={`px-4 py-2 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+            currentView === 'intelligence'
+              ? 'bg-[#8052FF] text-white shadow-sm'
+              : 'text-[#9A9A9A] hover:text-white'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-[#FFB829]" />
+          <span>Class Intelligence</span>
+        </button>
+      </div>
+
+      {/* VIEW: CLASS INTELLIGENCE SUITE */}
+      {currentView === 'intelligence' && (
+        <div className="space-y-6">
+          {/* Top Calculated Metrics Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="p-5">
+              <div className="flex items-center justify-between text-[#9A9A9A] text-xs font-mono uppercase">
+                <span>Class Average</span>
+                <Percent className="w-4 h-4 text-[#8052FF]" />
+              </div>
+              <div className="text-3xl font-mono font-medium text-white mt-2">
+                {classIntelligence?.average_class_score ?? stats?.average_class_score ?? 0}%
+              </div>
+              <p className="text-[11px] text-[#777] mt-1 font-light">
+                Formula: (Sum Obtained / Sum Max) × 100
+              </p>
+            </Card>
+
+            <Card className="p-5">
+              <div className="flex items-center justify-between text-[#9A9A9A] text-xs font-mono uppercase">
+                <span>Total Assessments</span>
+                <ClipboardList className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-3xl font-mono font-medium text-white mt-2">
+                {classIntelligence?.total_assessments ?? 0}
+              </div>
+              <p className="text-[11px] text-[#777] mt-1 font-light">
+                Across {classIntelligence?.total_students ?? registeredStudents.length} active students
+              </p>
+            </Card>
+
+            <Card className="p-5">
+              <div className="flex items-center justify-between text-[#9A9A9A] text-xs font-mono uppercase">
+                <span>Strongest Topic</span>
+                <Award className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-base font-medium text-emerald-400 mt-2 truncate">
+                {classIntelligence?.strongest_topic || stats?.strongest_topic || 'Pending Data'}
+              </div>
+              <p className="text-[11px] text-[#777] mt-1 font-light">Highest average mastery</p>
+            </Card>
+
+            <Card className="p-5">
+              <div className="flex items-center justify-between text-[#9A9A9A] text-xs font-mono uppercase">
+                <span>Weakest Topic</span>
+                <AlertTriangle className="w-4 h-4 text-rose-400" />
+              </div>
+              <div className="text-base font-medium text-rose-400 mt-2 truncate">
+                {classIntelligence?.weakest_topic || stats?.weakest_topic || 'Pending Data'}
+              </div>
+              <p className="text-[11px] text-[#777] mt-1 font-light">Requires instructional revision</p>
+            </Card>
+          </div>
+
+          {/* Local Qwen AI Teaching Insights */}
+          <div className="p-6 rounded-2xl bg-[#0A0A0A] border border-[#8052FF]/30 space-y-3 relative overflow-hidden">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-[#8052FF]/20 text-[#8052FF] flex items-center justify-center">
+                <Brain className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-white">Qwen Local AI Teaching Insights</h3>
+                <p className="text-[11px] text-[#9A9A9A]">
+                  Pedagogical recommendations generated on-device based strictly on computed class performance metrics
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-black border border-white/[0.06] text-xs text-[#DDD] leading-relaxed whitespace-pre-wrap font-sans">
+              {classIntelligence?.ai_teaching_insights || (
+                '1. Focus upcoming class revision on topics scoring below 65% with worked step-by-step examples.\n' +
+                '2. Assign focused AI Tutor remedial exercises for identified rubric gaps.\n' +
+                '3. Reinforce core conceptual definitions before advancing to complex multi-step scenarios.'
+              )}
+            </div>
+          </div>
+
+          {/* Strongest vs Attention Topics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Strongest Topics */}
+            <Card className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Strongest Topics (&ge; 70%)</span>
+                </h3>
+              </div>
+
+              <div className="space-y-3">
+                {classIntelligence?.strongest_topics && classIntelligence.strongest_topics.length > 0 ? (
+                  classIntelligence.strongest_topics.map(t => (
+                    <div
+                      key={t.topic}
+                      onClick={() => openTopicDrilldown(t.topic)}
+                      className="p-3 rounded-xl bg-black border border-white/[0.06] hover:border-[#8052FF]/40 cursor-pointer transition-all space-y-1.5 group"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-white font-medium group-hover:text-[#8052FF] transition-colors">
+                          {t.topic}
+                        </span>
+                        <span className="font-mono text-emerald-400 font-medium">
+                          {t.average_percentage}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-white/[0.05] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-emerald-400 rounded-full"
+                          style={{ width: `${t.average_percentage}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-[#777] font-mono">
+                        <span>{t.number_of_questions} questions evaluated</span>
+                        <span className="text-[#8052FF]">Click for drilldown &rarr;</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-[#777] text-center py-4">No topics above 70% yet.</p>
+                )}
+              </div>
+            </Card>
+
+            {/* Topics Needing Attention */}
+            <Card className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-400" />
+                  <span>Topics Needing Attention (&lt; 70%)</span>
+                </h3>
+              </div>
+
+              <div className="space-y-3">
+                {classIntelligence?.topics_needing_attention && classIntelligence.topics_needing_attention.length > 0 ? (
+                  classIntelligence.topics_needing_attention.map(t => (
+                    <div
+                      key={t.topic}
+                      onClick={() => openTopicDrilldown(t.topic)}
+                      className="p-3 rounded-xl bg-black border border-white/[0.06] hover:border-rose-500/40 cursor-pointer transition-all space-y-1.5 group"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-white font-medium group-hover:text-rose-400 transition-colors">
+                          {t.topic}
+                        </span>
+                        <span className="font-mono text-rose-400 font-medium">
+                          {t.average_percentage}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-white/[0.05] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-rose-400 rounded-full"
+                          style={{ width: `${Math.max(5, t.average_percentage)}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-[#777] font-mono">
+                        <span>{t.number_of_questions} questions evaluated</span>
+                        <span className="text-rose-400">Click for drilldown &rarr;</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-[#777] text-center py-4">All evaluated topics meet 70% benchmark.</p>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* Most Frequently Incorrect Questions */}
+          {classIntelligence?.most_frequently_incorrect_questions && classIntelligence.most_frequently_incorrect_questions.length > 0 && (
+            <Card className="p-6 space-y-4">
+              <h3 className="text-sm font-medium text-white flex items-center gap-2">
+                <HelpCircle className="w-4 h-4 text-[#FFB829]" />
+                <span>Frequently Incorrect Questions</span>
+              </h3>
+
+              <div className="space-y-3">
+                {classIntelligence.most_frequently_incorrect_questions.map((q, idx) => (
+                  <div key={idx} className="p-4 rounded-xl bg-black border border-white/[0.06] space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded bg-rose-500/20 text-rose-400 font-mono text-xs flex items-center justify-center font-medium">
+                          Q{q.question_number}
+                        </span>
+                        <span className="px-2 py-0.5 rounded bg-white/[0.05] text-[#9A9A9A] text-[10px] font-mono">
+                          {q.topic}
+                        </span>
+                      </div>
+                      <div className="text-right font-mono text-xs">
+                        <span className="text-rose-400 font-medium">{q.failure_percentage}% Low Scores</span>
+                        <span className="text-[#777] text-[11px] block">Avg: {q.average_score}/{q.maximum_marks}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-white pl-1">{q.question_text}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Students Needing Support Table */}
+          <Card className="p-6 space-y-4">
+            <h3 className="text-sm font-medium text-white flex items-center gap-2">
+              <Users className="w-4 h-4 text-rose-400" />
+              <span>Students Requiring Academic Attention (&lt; 65%)</span>
+            </h3>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-black text-[#9A9A9A] font-mono text-[10px] uppercase border-b border-white/[0.06]">
+                  <tr>
+                    <th className="py-2.5 px-3">Student</th>
+                    <th className="py-2.5 px-3">Assignment</th>
+                    <th className="py-2.5 px-3">Score</th>
+                    <th className="py-2.5 px-3">Primary Gap</th>
+                    <th className="py-2.5 px-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.04]">
+                  {classIntelligence?.students_needing_support && classIntelligence.students_needing_support.length > 0 ? (
+                    classIntelligence.students_needing_support.map(s => (
+                      <tr key={s.submission_id} className="hover:bg-white/[0.02]">
+                        <td className="py-3 px-3 font-medium text-white">{s.student_name}</td>
+                        <td className="py-3 px-3 text-[#BBB]">{s.assignment_title}</td>
+                        <td className="py-3 px-3 font-mono font-medium text-rose-400">
+                          {s.score}/{s.maximum_marks} ({s.percentage}%)
+                        </td>
+                        <td className="py-3 px-3 text-[#9A9A9A] text-[11px]">{s.primary_weakness}</td>
+                        <td className="py-3 px-3 text-right space-x-2">
+                          {s.student_id && (
+                            <button
+                              onClick={() => openStudentDrilldown(s.student_id!)}
+                              className="px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-[11px] text-white"
+                            >
+                              Profile
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleOpenReview(s.submission_id)}
+                            className="px-2.5 py-1 rounded-lg bg-[#8052FF]/20 hover:bg-[#8052FF]/30 text-[11px] text-[#8052FF]"
+                          >
+                            Review
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="py-6 text-center text-[#777] text-xs">
+                        No students currently flagged below 65%.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         </div>
       )}
 
-      {/* 1. OVERVIEW METRICS STRIP */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5 sm:gap-4">
-        <Card className="p-4 bg-white dark:bg-slate-900">
+      {/* VIEW: ASSIGNMENTS MANAGEMENT */}
+      {currentView === 'assignments' && (
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Total Assignments</span>
-            <ClipboardList className="w-4 h-4 text-indigo-500" />
+            <h3 className="text-sm font-medium text-white">Coursework & Rubrics</h3>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={<Plus className="w-3.5 h-3.5" />}
+              onClick={() => setShowCreateModal(true)}
+            >
+              Create Assignment
+            </Button>
           </div>
-          <div className="text-2xl font-extrabold text-slate-900 dark:text-white mt-2 font-mono">
-            {stats ? stats.total_assignments : '—'}
-          </div>
-          <span className="text-[11px] text-slate-400 mt-1 block">Active course rubrics</span>
-        </Card>
 
-        <Card className="p-4 bg-white dark:bg-slate-900 border-l-4 border-l-amber-500">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Pending Reviews</span>
-            <Clock className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="text-2xl font-extrabold text-amber-600 dark:text-amber-400 mt-2 font-mono">
-            {stats ? stats.pending_reviews : '—'}
-          </div>
-          <span className="text-[11px] text-slate-400 mt-1 block">Awaiting teacher sign-off</span>
-        </Card>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {assignments.map(asgn => {
+              const isDraft = asgn.status === 'draft';
+              return (
+                <div
+                  key={asgn.id}
+                  className="p-5 rounded-2xl bg-[#0A0A0A] border border-white/[0.08] hover:border-white/[0.16] transition-all flex flex-col justify-between space-y-4"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-white/[0.05] text-[#9A9A9A]">
+                        {asgn.subject}
+                      </span>
+                      {isDraft ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-[#FFB829]/15 text-[#FFB829] border border-[#FFB829]/30">
+                          Draft
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                          Published
+                        </span>
+                      )}
+                    </div>
 
-        <Card className="p-4 bg-white dark:bg-slate-900 border-l-4 border-l-emerald-500">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Completed Reviews</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-2 font-mono">
-            {stats ? stats.completed_reviews : '—'}
-          </div>
-          <span className="text-[11px] text-slate-400 mt-1 block">Locked & finalized scores</span>
-        </Card>
+                    <h4 className="text-base font-medium text-white">{asgn.title}</h4>
+                    <p className="text-xs text-[#777] font-mono">
+                      {asgn.questions?.length || 0} Questions • {asgn.total_maximum_marks} Maximum Marks
+                    </p>
+                    <p className="text-xs text-[#9A9A9A] font-mono">
+                      Assigned to {asgn.assigned_students_count || asgn.assigned_students?.length || 0} students
+                    </p>
+                  </div>
 
-        <Card className="p-4 bg-white dark:bg-slate-900">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Average Class Score</span>
-            <Percent className="w-4 h-4 text-indigo-500" />
+                  <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between">
+                    <span className="text-xs font-mono text-[#777]">
+                      {asgn.submission_count} submissions
+                    </span>
+                    {isDraft ? (
+                      <button
+                        onClick={() => handlePublishAssignment(asgn.id)}
+                        className="px-3 py-1.5 rounded-lg bg-[#8052FF] hover:bg-[#6D3DF5] text-white text-xs font-medium transition-colors"
+                      >
+                        Publish Now
+                      </button>
+                    ) : (
+                      <span className="text-xs font-mono text-emerald-400">Live for students</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className="text-2xl font-extrabold text-indigo-600 dark:text-indigo-400 mt-2 font-mono">
-            {stats ? `${stats.average_class_score}%` : '—'}
-          </div>
-          <span className="text-[11px] text-slate-400 mt-1 block">Overall performance</span>
-        </Card>
-
-        <Card className="p-4 bg-white dark:bg-slate-900 border-l-4 border-l-rose-500">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Requires Attention</span>
-            <AlertTriangle className="w-4 h-4 text-rose-500" />
-          </div>
-          <div className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 mt-2 font-mono">
-            {stats ? stats.students_requiring_attention : '—'}
-          </div>
-          <span className="text-[11px] text-slate-400 mt-1 block">Students below 60%</span>
-        </Card>
-      </div>
-
-      {/* 2. REVIEW QUEUE SECTION */}
-      <Card>
-        <CardHeader
-          title="Review Queue"
-          subtitle="Student submissions waiting for teacher review and grading approval"
-          icon={<CheckSquare className="w-5 h-5 text-indigo-400" />}
-          action={
-            <Badge variant={reviewQueue.length > 0 ? 'accent' : 'default'} size="sm">
-              {reviewQueue.length} in queue
-            </Badge>
-          }
-        />
-
-        <div className="overflow-x-auto pt-2">
-          {reviewQueue.length > 0 ? (
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">
-                <tr>
-                  <th className="py-3 px-3">Student</th>
-                  <th className="py-3 px-3">Assignment</th>
-                  <th className="py-3 px-3">AI Suggested Score</th>
-                  <th className="py-3 px-3">Final / Teacher Score</th>
-                  <th className="py-3 px-3">Status</th>
-                  <th className="py-3 px-3">Submitted At</th>
-                  <th className="py-3 px-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono text-[11px]">
-                {reviewQueue.map(item => {
-                  const isApproved = item.approval_status === 'approved';
-                  const isModified = item.approval_status === 'modified';
-                  return (
-                    <tr key={item.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="py-3 px-3 font-semibold text-slate-800 dark:text-slate-200">
-                        {item.student_name}
-                      </td>
-                      <td className="py-3 px-3 text-slate-600 dark:text-slate-300">
-                        {item.assignment_title}
-                      </td>
-                      <td className="py-3 px-3 text-slate-500">
-                        {item.ai_suggested_score} / {item.total_maximum_marks}
-                      </td>
-                      <td className="py-3 px-3 font-bold text-indigo-500">
-                        {item.final_score !== null && item.final_score !== undefined
-                          ? `${item.final_score} / ${item.total_maximum_marks}`
-                          : '—'}
-                      </td>
-                      <td className="py-3 px-3">
-                        <Badge
-                          variant={isApproved ? 'success' : isModified ? 'brand' : 'warning'}
-                          size="sm"
-                        >
-                          {isApproved ? 'Approved' : isModified ? 'Modified' : 'Pending'}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-3 text-slate-400">
-                        {new Date(item.submitted_at).toLocaleDateString()} {new Date(item.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        <Button
-                          variant="accent"
-                          size="sm"
-                          icon={<Eye className="w-3.5 h-3.5" />}
-                          onClick={() => handleOpenReview(item.id)}
-                        >
-                          Review
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          ) : (
-            <div className="p-8 text-center text-slate-500 text-xs">
-              <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2 opacity-80" />
-              <p className="font-semibold text-slate-700 dark:text-slate-300">Review queue is clean</p>
-              <p className="mt-0.5">All student assessment submissions have been evaluated and approved.</p>
-            </div>
-          )}
         </div>
-      </Card>
+      )}
 
-      {/* 3. ASSIGNMENT MANAGEMENT & CLASS PERFORMANCE GRID */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Recent Assignments Table */}
-        <div className="lg:col-span-7">
+      {/* VIEW: OVERVIEW & REVIEW QUEUE */}
+      {currentView === 'dashboard' && (
+        <div className="space-y-6">
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="p-4">
+              <span className="text-xs font-mono text-[#9A9A9A] uppercase">Total Assignments</span>
+              <p className="text-2xl font-mono font-medium text-white mt-1">{assignments.length}</p>
+            </Card>
+            <Card className="p-4">
+              <span className="text-xs font-mono text-[#9A9A9A] uppercase">Pending Reviews</span>
+              <p className="text-2xl font-mono font-medium text-[#8052FF] mt-1">{stats?.pending_reviews ?? 0}</p>
+            </Card>
+            <Card className="p-4">
+              <span className="text-xs font-mono text-[#9A9A9A] uppercase">Approved Submissions</span>
+              <p className="text-2xl font-mono font-medium text-emerald-400 mt-1">{stats?.completed_reviews ?? 0}</p>
+            </Card>
+            <Card className="p-4">
+              <span className="text-xs font-mono text-[#9A9A9A] uppercase">Class Average</span>
+              <p className="text-2xl font-mono font-medium text-white mt-1">{stats?.average_class_score ?? 0}%</p>
+            </Card>
+          </div>
+
+          {/* Review Queue Card */}
           <Card>
             <CardHeader
-              title="Recent Assignments"
-              subtitle="Course curriculum and rubric definitions"
-              icon={<ClipboardList className="w-5 h-5 text-indigo-400" />}
+              title="Review Queue"
+              subtitle="Student submissions waiting for teacher review and grading approval"
+              icon={<CheckSquare className="w-5 h-5 text-[#8052FF]" />}
               action={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon={<Plus className="w-3.5 h-3.5" />}
-                  onClick={() => setShowCreateModal(true)}
-                >
-                  New Assignment
-                </Button>
+                <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-[#8052FF]/20 text-[#8052FF] border border-[#8052FF]/30">
+                  {reviewQueue.length} in queue
+                </span>
               }
             />
 
             <div className="overflow-x-auto pt-2">
-              {assignments.length > 0 ? (
+              {reviewQueue.length > 0 ? (
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">
+                  <thead className="bg-black text-[#9A9A9A] font-mono text-[10px] uppercase border-b border-white/[0.06]">
                     <tr>
-                      <th className="py-2.5 px-3">Assignment</th>
-                      <th className="py-2.5 px-3">Subject</th>
-                      <th className="py-2.5 px-3">Max Marks</th>
-                      <th className="py-2.5 px-3">Submissions</th>
-                      <th className="py-2.5 px-3">Pending</th>
-                      <th className="py-2.5 px-3">Avg Score</th>
+                      <th className="py-3 px-3">Student</th>
+                      <th className="py-3 px-3">Assignment</th>
+                      <th className="py-3 px-3">Type</th>
+                      <th className="py-3 px-3">AI Score</th>
+                      <th className="py-3 px-3">Final Score</th>
+                      <th className="py-3 px-3">Status</th>
+                      <th className="py-3 px-3 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono text-[11px]">
-                    {assignments.map(a => (
-                      <tr key={a.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                        <td className="py-3 px-3 font-semibold text-slate-800 dark:text-slate-200">
-                          {a.title}
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {reviewQueue.map(item => (
+                      <tr key={item.id} className="hover:bg-white/[0.02] transition-colors">
+                        <td className="py-3 px-3 font-medium text-white">{item.student_name}</td>
+                        <td className="py-3 px-3 text-[#BBB]">{item.assignment_title}</td>
+                        <td className="py-3 px-3 font-mono text-[11px] text-[#777]">
+                          {item.file_type === 'typed' ? 'Typed' : 'Scanned'}
                         </td>
-                        <td className="py-3 px-3 text-slate-500 font-sans">
-                          {a.subject}
+                        <td className="py-3 px-3 font-mono text-[#9A9A9A]">
+                          {item.ai_suggested_score} / {item.total_maximum_marks}
                         </td>
-                        <td className="py-3 px-3 text-slate-600 dark:text-slate-300">
-                          {a.total_maximum_marks} pts
-                        </td>
-                        <td className="py-3 px-3 text-slate-600 dark:text-slate-300">
-                          {a.submission_count}
+                        <td className="py-3 px-3 font-mono font-medium text-[#8052FF]">
+                          {item.final_score !== null && item.final_score !== undefined
+                            ? `${item.final_score} / ${item.total_maximum_marks}`
+                            : '—'}
                         </td>
                         <td className="py-3 px-3">
-                          {a.pending_review_count > 0 ? (
-                            <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 font-semibold">
-                              {a.pending_review_count} pending
-                            </span>
-                          ) : (
-                            <span className="text-emerald-500">0</span>
-                          )}
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.05] text-[#BBB]">
+                            {item.approval_status}
+                          </span>
                         </td>
-                        <td className="py-3 px-3 text-indigo-500 font-bold">
-                          {a.average_score !== null && a.average_score !== undefined ? `${a.average_score} pts` : '—'}
+                        <td className="py-3 px-3 text-right">
+                          <button
+                            onClick={() => handleOpenReview(item.id)}
+                            className="px-3 py-1.5 rounded-lg bg-[#8052FF] hover:bg-[#6D3DF5] text-white text-xs font-medium transition-colors"
+                          >
+                            Review
+                          </button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               ) : (
-                <div className="p-8 text-center text-slate-500 text-xs">
-                  <p>No assignments created yet. Click "New Assignment" to build your first course rubric.</p>
+                <div className="p-8 text-center text-xs text-[#777]">
+                  No pending submissions in the review queue.
                 </div>
               )}
             </div>
           </Card>
         </div>
-
-        {/* Right Column: Class Performance & Students Needing Support */}
-        <div className="lg:col-span-5 space-y-6">
-          <Card>
-            <CardHeader
-              title="Class Performance Highlights"
-              subtitle="Real-time analytics across all evaluated submissions"
-              icon={<BarChart3 className="w-5 h-5 text-indigo-400" />}
-            />
-
-            <div className="space-y-4 pt-1 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-                  <span className="text-[11px] font-semibold text-emerald-500 uppercase tracking-wider block mb-1">
-                    Strongest Topic
-                  </span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200 block text-sm">
-                    {stats?.strongest_topic || 'Pending data'}
-                  </span>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-                  <span className="text-[11px] font-semibold text-rose-500 uppercase tracking-wider block mb-1">
-                    Weakest Topic
-                  </span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200 block text-sm">
-                    {stats?.weakest_topic || 'Pending data'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Topic breakdown list */}
-              {stats?.topic_analytics && stats.topic_analytics.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
-                    Curriculum Topic Averages
-                  </span>
-                  {stats.topic_analytics.slice(0, 4).map(t => (
-                    <div key={t.topic} className="flex items-center justify-between text-xs font-mono">
-                      <span className="text-slate-700 dark:text-slate-300 font-sans">{t.topic}</span>
-                      <span className="text-slate-500">{t.average_percentage}% ({t.question_count} questions)</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </Card>
-
-          {/* Students Needing Support Card */}
-          <Card>
-            <CardHeader
-              title="Students Needing Support"
-              subtitle="Scored below 65% with identified learning gaps"
-              icon={<Users className="w-5 h-5 text-rose-500" />}
-            />
-
-            <div className="space-y-2 pt-1">
-              {stats?.students_needing_support && stats.students_needing_support.length > 0 ? (
-                stats.students_needing_support.map(s => (
-                  <div
-                    key={s.submission_id}
-                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs"
-                  >
-                    <div>
-                      <span className="font-bold text-slate-800 dark:text-slate-200 block">
-                        {s.student_name}
-                      </span>
-                      <span className="text-slate-500 text-[11px]">
-                        {s.assignment_title} • Gap: <span className="text-rose-400">{s.primary_weakness}</span>
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-rose-500">{s.percentage}%</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-[11px] px-2 py-0.5"
-                        onClick={() => handleOpenReview(s.submission_id)}
-                      >
-                        Inspect
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-4 text-center text-slate-500 text-xs">
-                  No students currently flagged as needing urgent academic intervention.
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
-      </div>
+      )}
 
       {/* ========================================================================= */}
       {/* MODAL: CREATE ASSIGNMENT */}
       {/* ========================================================================= */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-[#0A0A0A] border border-white/[0.08] rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl">
+            <div className="p-5 border-b border-white/[0.08] flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  Create New Assignment
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Define assignment metadata, question schemas, and evaluation rubrics.
+                <h3 className="text-base font-medium text-white">Create New Course Assignment</h3>
+                <p className="text-xs text-[#9A9A9A] mt-0.5">
+                  Design questions, select student recipients, set rubrics, and publish.
                 </p>
               </div>
               <button
                 onClick={() => setShowCreateModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg p-1"
+                className="text-[#9A9A9A] hover:text-white text-lg p-1"
               >
                 ✕
               </button>
@@ -1173,77 +1287,124 @@ export const TeacherDashboardPage: React.FC = () => {
             <form onSubmit={handleCreateAssignmentSubmit} className="p-5 overflow-y-auto space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  <label className="font-mono text-[10px] uppercase text-[#9A9A9A] block mb-1">
                     Assignment Title *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Java OOP & Inheritance Assessment"
+                    placeholder="e.g. Object-Oriented Principles & Data Structures"
                     value={newTitle}
                     onChange={e => setNewTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                    className="w-full px-3 py-2 rounded-xl bg-black border border-white/[0.1] text-white focus:outline-none focus:border-[#8052FF]"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  <label className="font-mono text-[10px] uppercase text-[#9A9A9A] block mb-1">
                     Subject / Course *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Computer Science"
+                    placeholder="e.g. Computer Science 201"
                     value={newSubject}
                     onChange={e => setNewSubject(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                    className="w-full px-3 py-2 rounded-xl bg-black border border-white/[0.1] text-white focus:outline-none focus:border-[#8052FF]"
                   />
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="font-mono text-[10px] uppercase text-[#9A9A9A] block mb-1">
+                    Due Date (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 15 Oct 2026, 11:59 PM"
+                    value={newDueDate}
+                    onChange={e => setNewDueDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-black border border-white/[0.1] text-white focus:outline-none focus:border-[#8052FF]"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-mono text-[10px] uppercase text-[#9A9A9A] block mb-1">
+                    Publishing Status
+                  </label>
+                  <select
+                    value={newStatus}
+                    onChange={e => setNewStatus(e.target.value as any)}
+                    className="w-full px-3 py-2 rounded-xl bg-black border border-white/[0.1] text-white focus:outline-none focus:border-[#8052FF]"
+                  >
+                    <option value="published">Published (Visible to students immediately)</option>
+                    <option value="draft">Draft (Hidden from students)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Student Assignment Selector */}
+              <div className="p-3.5 rounded-xl bg-black border border-white/[0.08] space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-mono text-[10px] uppercase text-[#9A9A9A]">
+                    Assign To Students
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-xs text-white">
+                    <input
+                      type="checkbox"
+                      checked={assignToAll}
+                      onChange={e => setAssignToAll(e.target.checked)}
+                      className="rounded accent-[#8052FF]"
+                    />
+                    <span>All Students ({registeredStudents.length})</span>
+                  </label>
+                </div>
+
+                {!assignToAll && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                    {registeredStudents.map(s => (
+                      <label
+                        key={s.id}
+                        className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/[0.04] text-xs text-white cursor-pointer hover:bg-white/[0.05]"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedStudentIds.includes(s.id)}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setSelectedStudentIds(prev => [...prev, s.id]);
+                            } else {
+                              setSelectedStudentIds(prev => prev.filter(id => id !== s.id));
+                            }
+                          }}
+                          className="rounded accent-[#8052FF]"
+                        />
+                        <span>{s.name}</span>
+                        <span className="text-[10px] text-[#777] font-mono">({s.email})</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div>
-                <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                <label className="font-mono text-[10px] uppercase text-[#9A9A9A] block mb-1">
                   General Instructions
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Instructions for students on formatting, time limits, or allowed materials..."
+                  placeholder="Instructions for students regarding clarity, length, or focus..."
                   value={newInstructions}
                   onChange={e => setNewInstructions(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Expected Concepts (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Polymorphism, Abstract Classes, Encapsulation"
-                  value={newConcepts}
-                  onChange={e => setNewConcepts(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Rubric & Evaluation Guidance
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Provide guidance for the AI evaluator (e.g. Award 5 marks for definition, 5 marks for working code example)..."
-                  value={newRubric}
-                  onChange={e => setNewRubric(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                  className="w-full px-3 py-2 rounded-xl bg-black border border-white/[0.1] text-white focus:outline-none focus:border-[#8052FF]"
                 />
               </div>
 
               {/* Questions Definition */}
-              <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="space-y-3 pt-2 border-t border-white/[0.08]">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider text-[11px]">
+                  <span className="font-mono text-[10px] uppercase text-[#9A9A9A]">
                     Questions Schema ({newQuestions.length})
                   </span>
                   <Button
@@ -1258,14 +1419,14 @@ export const TeacherDashboardPage: React.FC = () => {
                   </Button>
                 </div>
 
-                <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
+                <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
                   {newQuestions.map((q, idx) => (
                     <div
                       key={idx}
-                      className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2"
+                      className="p-3.5 rounded-xl bg-black border border-white/[0.08] space-y-2.5"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-bold text-indigo-400">Q{q.question_number}</span>
+                        <span className="font-mono font-medium text-xs text-[#8052FF]">Q{q.question_number}</span>
                         <div className="flex items-center gap-2">
                           <input
                             type="text"
@@ -1273,53 +1434,62 @@ export const TeacherDashboardPage: React.FC = () => {
                             value={q.topic}
                             onChange={e => {
                               const val = e.target.value;
-                              setNewQuestions(prev => prev.map((item, i) => i === idx ? { ...item, topic: val } : item));
+                              setNewQuestions(prev => prev.map((item, i) => (i === idx ? { ...item, topic: val } : item)));
                             }}
-                            className="w-28 px-2 py-1 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs"
+                            className="w-28 px-2 py-1 rounded bg-black border border-white/[0.1] text-xs text-white"
                           />
-                          <div className="flex items-center gap-1">
-                            <span className="text-slate-500">Max:</span>
-                            <input
-                              type="number"
-                              min="1"
-                              max="100"
-                              value={q.maximum_marks}
-                              onChange={e => {
-                                const val = parseFloat(e.target.value) || 1;
-                                setNewQuestions(prev => prev.map((item, i) => i === idx ? { ...item, maximum_marks: val } : item));
-                              }}
-                              className="w-14 px-2 py-1 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-mono"
-                            />
-                          </div>
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={q.maximum_marks}
+                            onChange={e => {
+                              const val = parseFloat(e.target.value) || 1;
+                              setNewQuestions(prev => prev.map((item, i) => (i === idx ? { ...item, maximum_marks: val } : item)));
+                            }}
+                            className="w-14 px-2 py-1 rounded bg-black border border-white/[0.1] text-xs font-mono text-white"
+                          />
                           {newQuestions.length > 1 && (
                             <button
                               type="button"
                               onClick={() => handleRemoveQuestionRow(idx)}
-                              className="text-rose-400 hover:text-rose-600 px-1"
+                              className="text-rose-400 hover:text-rose-300 px-1 text-sm"
                             >
                               ✕
                             </button>
                           )}
                         </div>
                       </div>
+
                       <input
                         type="text"
                         placeholder="Question prompt..."
                         value={q.question_text}
                         onChange={e => {
                           const val = e.target.value;
-                          setNewQuestions(prev => prev.map((item, i) => i === idx ? { ...item, question_text: val } : item));
+                          setNewQuestions(prev => prev.map((item, i) => (i === idx ? { ...item, question_text: val } : item)));
                         }}
-                        className="w-full px-2.5 py-1.5 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs"
+                        className="w-full px-2.5 py-1.5 rounded bg-black border border-white/[0.1] text-xs text-white placeholder-[#555]"
+                      />
+
+                      <input
+                        type="text"
+                        placeholder="Grading Rubric / Criteria (e.g. Award 5 marks for definition, 5 marks for code example)..."
+                        value={q.rubric || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setNewQuestions(prev => prev.map((item, i) => (i === idx ? { ...item, rubric: val } : item)));
+                        }}
+                        className="w-full px-2.5 py-1 rounded bg-black border border-white/[0.06] text-[11px] text-[#BBB] placeholder-[#444]"
                       />
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-xs text-slate-500 font-mono">
-                  Total Marks: <strong>{newQuestions.reduce((acc, q) => acc + (Number(q.maximum_marks) || 0), 0)} pts</strong>
+              <div className="pt-3 border-t border-white/[0.08] flex items-center justify-between">
+                <span className="text-xs font-mono text-[#9A9A9A]">
+                  Total: <strong>{newQuestions.reduce((acc, q) => acc + (Number(q.maximum_marks) || 0), 0)} pts</strong>
                 </span>
                 <div className="flex items-center gap-2">
                   <Button
@@ -1336,11 +1506,94 @@ export const TeacherDashboardPage: React.FC = () => {
                     size="sm"
                     disabled={creatingAssignment}
                   >
-                    {creatingAssignment ? 'Saving...' : 'Save Assignment'}
+                    {creatingAssignment ? 'Saving...' : newStatus === 'published' ? 'Publish Assignment' : 'Save Draft'}
                   </Button>
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* TOPIC DRILLDOWN MODAL */}
+      {topicDrilldown && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-[#0A0A0A] border border-white/[0.08] rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+              <div>
+                <span className="text-[10px] font-mono uppercase text-[#8052FF]">Topic Mastery Drilldown</span>
+                <h3 className="text-base font-medium text-white">{topicDrilldown.topic}</h3>
+              </div>
+              <button
+                onClick={() => setTopicDrilldown(null)}
+                className="text-[#9A9A9A] hover:text-white p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between text-xs font-mono text-[#9A9A9A] p-3 rounded-xl bg-black border border-white/[0.06]">
+              <span>Attempts: {topicDrilldown.total_attempts}</span>
+              <span className="text-white font-medium">Average: {topicDrilldown.average_percentage}%</span>
+            </div>
+
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {topicDrilldown.records.map((r, idx) => (
+                <div key={idx} className="p-3 rounded-xl bg-black border border-white/[0.04] text-xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white font-medium">{r.student_name}</span>
+                    <span className="font-mono text-emerald-400">{r.score}/{r.maximum_marks} ({r.percentage}%)</span>
+                  </div>
+                  {r.learning_gap && (
+                    <p className="text-[11px] text-[#FFB829]">Gap: {r.learning_gap}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STUDENT DRILLDOWN MODAL */}
+      {studentDrilldown && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-[#0A0A0A] border border-white/[0.08] rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+              <div>
+                <span className="text-[10px] font-mono uppercase text-[#8052FF]">Student Mastery Profile</span>
+                <h3 className="text-base font-medium text-white">{studentDrilldown.student_name}</h3>
+                <p className="text-xs text-[#777] font-mono">{studentDrilldown.email}</p>
+              </div>
+              <button
+                onClick={() => setStudentDrilldown(null)}
+                className="text-[#9A9A9A] hover:text-white p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-xs font-mono p-3 rounded-xl bg-black border border-white/[0.06]">
+              <div>
+                <span className="text-[#777] block text-[10px]">Total Assigned</span>
+                <span className="text-white font-medium">{studentDrilldown.total_assigned} Coursework</span>
+              </div>
+              <div>
+                <span className="text-[#777] block text-[10px]">Total Submitted</span>
+                <span className="text-white font-medium">{studentDrilldown.total_submitted} Assessments</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="text-xs font-mono uppercase text-[#9A9A9A]">Topic Mastery Breakdown</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {studentDrilldown.topic_mastery.map(tm => (
+                  <div key={tm.topic} className="p-2.5 rounded-lg bg-black border border-white/[0.04] text-xs flex items-center justify-between">
+                    <span className="text-white">{tm.topic}</span>
+                    <span className="font-mono text-emerald-400">{tm.percentage}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}

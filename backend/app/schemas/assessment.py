@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class OCRPageResult(BaseModel):
@@ -84,15 +84,28 @@ class RecommendationItem(BaseModel):
 class AssessmentEvaluationResponse(BaseModel):
     submission_id: str
     total_maximum_marks: float
+    maximum_marks: Optional[float] = None
     ai_suggested_score: float
+    suggested_score: Optional[float] = None
     teacher_score: Optional[float] = None
     final_score: Optional[float] = None
+    teacher_feedback: Optional[str] = None
     percentage: float
     approval_status: str
     questions: List[QuestionEvaluationResult]
     topic_performance: List[TopicPerformanceItem]
     learning_gaps: List[LearningGapItem]
     recommendations: List[RecommendationItem]
+
+    @model_validator(mode="before")
+    @classmethod
+    def populate_aliases(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if values.get("maximum_marks") is None and "total_maximum_marks" in values:
+                values["maximum_marks"] = values["total_maximum_marks"]
+            if values.get("suggested_score") is None:
+                values["suggested_score"] = values.get("final_score") or values.get("ai_suggested_score", 0.0)
+        return values
 
 
 class TeacherQuestionReview(BaseModel):

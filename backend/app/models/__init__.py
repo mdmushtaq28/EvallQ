@@ -1,7 +1,8 @@
 from .document import Document, DocumentChunk
 from .focus_session import FocusSession
 from .study_interaction import StudyInteraction
-from .assignment import Assignment
+from .user import User
+from .assignment import Assignment, AssignmentQuestionItem, AssignmentStudent
 from .assessment import AssessmentSubmission, AssessmentQuestion
 
 __all__ = [
@@ -9,7 +10,10 @@ __all__ = [
     "DocumentChunk",
     "FocusSession",
     "StudyInteraction",
+    "User",
     "Assignment",
+    "AssignmentQuestionItem",
+    "AssignmentStudent",
     "AssessmentSubmission",
     "AssessmentQuestion",
 ]

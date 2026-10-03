@@ -32,7 +32,7 @@ def get_db() -> Generator[Session, None, None]:
 def init_db() -> None:
     """
     Initializes database tables defined on SQLAlchemy Base metadata.
-    Also executes lightweight migrations for SQLite if columns are missing.
+    Also executes lightweight migrations for SQLite and seeds default test users.
     """
     import app.models  # noqa: F401 - ensure models are registered
     Base.metadata.create_all(bind=engine)
@@ -42,13 +42,68 @@ def init_db() -> None:
         with engine.connect() as conn:
             # Check assessment_submissions columns
             result = conn.exec_driver_sql("PRAGMA table_info(assessment_submissions);")
-            existing_cols = {row[1] for row in result.fetchall()}
-            if "assignment_id" not in existing_cols:
+            existing_sub_cols = {row[1] for row in result.fetchall()}
+            if "assignment_id" not in existing_sub_cols:
                 conn.exec_driver_sql("ALTER TABLE assessment_submissions ADD COLUMN assignment_id VARCHAR(36);")
-            if "student_name" not in existing_cols:
+            if "student_id" not in existing_sub_cols:
+                conn.exec_driver_sql("ALTER TABLE assessment_submissions ADD COLUMN student_id VARCHAR(36);")
+            if "student_name" not in existing_sub_cols:
                 conn.exec_driver_sql("ALTER TABLE assessment_submissions ADD COLUMN student_name VARCHAR(100) DEFAULT 'Student';")
-            if "teacher_feedback" not in existing_cols:
+            if "submission_type" not in existing_sub_cols:
+                conn.exec_driver_sql("ALTER TABLE assessment_submissions ADD COLUMN submission_type VARCHAR(30) DEFAULT 'scanned';")
+            if "teacher_feedback" not in existing_sub_cols:
                 conn.exec_driver_sql("ALTER TABLE assessment_submissions ADD COLUMN teacher_feedback TEXT;")
+
+            # Check assignments columns
+            res_asgn = conn.exec_driver_sql("PRAGMA table_info(assignments);")
+            existing_asgn_cols = {row[1] for row in res_asgn.fetchall()}
+            if "teacher_id" not in existing_asgn_cols:
+                conn.exec_driver_sql("ALTER TABLE assignments ADD COLUMN teacher_id VARCHAR(36);")
+            if "teacher_name" not in existing_asgn_cols:
+                conn.exec_driver_sql("ALTER TABLE assignments ADD COLUMN teacher_name VARCHAR(100) DEFAULT 'Teacher';")
+            if "due_date" not in existing_asgn_cols:
+                conn.exec_driver_sql("ALTER TABLE assignments ADD COLUMN due_date VARCHAR(50);")
+            if "status" not in existing_asgn_cols:
+                conn.exec_driver_sql("ALTER TABLE assignments ADD COLUMN status VARCHAR(30) DEFAULT 'draft';")
+
             conn.commit()
     except Exception as e:
         print(f"Database schema synchronization notice: {e}")
+
+    # Seed default user accounts if user table is empty
+    try:
+        from app.models.user import User
+        db = SessionLocal()
+        if db.query(User).count() == 0:
+            default_users = [
+                User(
+                    name="Prof. Robert Chen",
+                    email="teacher@evallq.ai",
+                    password_hash=User.hash_password("teacher123"),
+                    role="TEACHER"
+                ),
+                User(
+                    name="Alex Rivera",
+                    email="student@evallq.ai",
+                    password_hash=User.hash_password("student123"),
+                    role="STUDENT"
+                ),
+                User(
+                    name="Jordan Lee",
+                    email="jordan@evallq.ai",
+                    password_hash=User.hash_password("student123"),
+                    role="STUDENT"
+                ),
+                User(
+                    name="Maya Patel",
+                    email="maya@evallq.ai",
+                    password_hash=User.hash_password("student123"),
+                    role="STUDENT"
+                ),
+            ]
+            db.add_all(default_users)
+            db.commit()
+            print("Successfully seeded default EvallQ accounts: teacher@evallq.ai, student@evallq.ai, jordan@evallq.ai, maya@evallq.ai")
+        db.close()
+    except Exception as e:
+        print(f"Default user seeding notice: {e}")

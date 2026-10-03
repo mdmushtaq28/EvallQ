@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './components/layout/Sidebar';
@@ -11,15 +11,24 @@ import { AnalyticsPage } from './pages/AnalyticsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AssessmentPage } from './pages/AssessmentPage';
 import { TeacherDashboardPage } from './pages/TeacherDashboardPage';
+import { StudentAssignmentsPage } from './pages/StudentAssignmentsPage';
+import { StudentAssignmentSolvePage } from './pages/StudentAssignmentSolvePage';
+import { StudentResultPage } from './pages/StudentResultPage';
+import { AuthModal } from './components/auth/AuthModal';
 
 const MainLayout: React.FC = () => {
-  const { activeTab } = useApp();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { activeTab, sidebarCollapsed, toggleSidebar, isAuthModalOpen, setAuthModalOpen } = useApp();
 
   const renderActivePage = () => {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardPage />;
+      case 'student-assignments':
+        return <StudentAssignmentsPage />;
+      case 'student-solve':
+        return <StudentAssignmentSolvePage />;
+      case 'student-result':
+        return <StudentResultPage />;
       case 'tutor':
         return <AITutorPage />;
       case 'study':
@@ -47,7 +56,7 @@ const MainLayout: React.FC = () => {
       {/* Navigation Sidebar */}
       <Sidebar
         collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        onToggleCollapse={toggleSidebar}
       />
 
       {/* Main Workspace Column */}
@@ -55,7 +64,7 @@ const MainLayout: React.FC = () => {
         {/* Top Header */}
         <Header
           sidebarCollapsed={sidebarCollapsed}
-          onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onToggleSidebar={toggleSidebar}
         />
 
         {/* Scrollable Page Content */}
@@ -63,6 +72,12 @@ const MainLayout: React.FC = () => {
           {renderActivePage()}
         </main>
       </div>
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+      />
     </div>
   );
 };
