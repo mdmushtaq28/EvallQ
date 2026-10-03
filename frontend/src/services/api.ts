@@ -35,6 +35,7 @@ import type {
   ClassIntelligenceData,
   TopicDrilldownData,
   StudentDrilldownData,
+  StudentResultListItem,
 } from '../types';
 const getApiBaseUrl = (): string => {
   const envUrl = import.meta.env.VITE_API_URL;
@@ -702,6 +703,10 @@ class ApiService {
 
   public async getStudentSubmission(submissionId: string): Promise<AssessmentEvaluationResponse> {
     return this.request<AssessmentEvaluationResponse>(`/api/student/submissions/${encodeURIComponent(submissionId)}`);
+  }
+
+  public async getStudentResults(): Promise<StudentResultListItem[]> {
+    return this.request<StudentResultListItem[]>('/api/student/results');
   }
 }
 

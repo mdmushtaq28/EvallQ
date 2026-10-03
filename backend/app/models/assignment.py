@@ -69,9 +69,11 @@ class Assignment(Base):
                     "id": q.id,
                     "question_number": q.question_number,
                     "question_text": q.question_text,
+                    "question": q.question_text,
                     "question_type": q.question_type,
-                    "maximum_marks": q.maximum_marks,
-                    "topic": q.topic,
+                    "maximum_marks": float(q.maximum_marks),
+                    "max_marks": float(q.maximum_marks),
+                    "topic": q.topic or "General",
                     "rubric": q.rubric or "",
                 }
                 for q in self.question_items
@@ -80,7 +82,27 @@ class Assignment(Base):
         if not self.questions:
             return []
         try:
-            return json.loads(self.questions)
+            raw = json.loads(self.questions)
+            if not isinstance(raw, list):
+                return []
+            normalized = []
+            for idx, q in enumerate(raw, start=1):
+                if isinstance(q, dict):
+                    q_text = q.get("question_text") or q.get("question") or f"Question {idx}"
+                    q_max = float(q.get("maximum_marks") or q.get("max_marks") or 10.0)
+                    q_num = int(q.get("question_number") or idx)
+                    normalized.append({
+                        "id": str(q.get("id") or uuid.uuid4()),
+                        "question_number": q_num,
+                        "question_text": q_text,
+                        "question": q_text,
+                        "question_type": str(q.get("question_type") or "Subjective"),
+                        "maximum_marks": q_max,
+                        "max_marks": q_max,
+                        "topic": str(q.get("topic") or "General"),
+                        "rubric": str(q.get("rubric") or ""),
+                    })
+            return normalized
         except Exception:
             return []
 

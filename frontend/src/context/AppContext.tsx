@@ -90,7 +90,21 @@ const defaultTeacherUser: AuthUser = {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [activeTab, setActiveTabState] = useState<TabType>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('evallq_active_tab') as TabType;
+      if (saved) return saved;
+    }
+    return 'dashboard';
+  });
+
+  const setActiveTab = (tab: TabType) => {
+    setActiveTabState(tab);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('evallq_active_tab', tab);
+    }
+  };
+
   const [userRole, setUserRoleState] = useState<UserRole>('student');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(defaultStudentUser);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
@@ -101,8 +115,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [inferenceDevice, setInferenceDevice] = useState<InferenceDevice>('AUTO');
   const [systemStatus, setSystemStatus] = useState<SystemModelStatus>(defaultSystemStatus);
 
-  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
-  const [selectedStudentSubmissionId, setSelectedStudentSubmissionId] = useState<string | null>(null);
+  const [selectedAssignmentId, setSelectedAssignmentIdState] = useState<string | null>(() => {
+    return typeof window !== 'undefined' ? localStorage.getItem('evallq_selected_assignment_id') : null;
+  });
+
+  const setSelectedAssignmentId = (id: string | null) => {
+    setSelectedAssignmentIdState(id);
+    if (typeof window !== 'undefined') {
+      if (id) localStorage.setItem('evallq_selected_assignment_id', id);
+      else localStorage.removeItem('evallq_selected_assignment_id');
+    }
+  };
+
+  const [selectedStudentSubmissionId, setSelectedStudentSubmissionIdState] = useState<string | null>(() => {
+    return typeof window !== 'undefined' ? localStorage.getItem('evallq_selected_submission_id') : null;
+  });
+
+  const setSelectedStudentSubmissionId = (id: string | null) => {
+    setSelectedStudentSubmissionIdState(id);
+    if (typeof window !== 'undefined') {
+      if (id) localStorage.setItem('evallq_selected_submission_id', id);
+      else localStorage.removeItem('evallq_selected_submission_id');
+    }
+  };
+
   const [tutorInitialPrompt, setTutorInitialPrompt] = useState<string | null>(null);
   const [selectedTeacherSubmissionId, setSelectedTeacherSubmissionId] = useState<string | null>(null);
 

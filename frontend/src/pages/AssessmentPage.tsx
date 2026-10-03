@@ -999,7 +999,7 @@ export const AssessmentPage: React.FC = () => {
 
                           <div className="flex items-center justify-between pt-2 border-t border-rose-200/60 dark:border-rose-900/40">
                             <span className="text-[11px] text-slate-500">
-                              Question(s): {gap.question_numbers.join(', ')}
+                              Question(s): {gap.question_numbers && Array.isArray(gap.question_numbers) ? gap.question_numbers.join(', ') : 'All'}
                             </span>
 
                             {/* P1: Clickable connection to AI Tutor */}

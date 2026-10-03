@@ -13,6 +13,7 @@ import {
   RefreshCw,
   Search,
   BookOpen,
+  GraduationCap,
 } from 'lucide-react';
 
 export const StudentAssignmentsPage: React.FC = () => {
@@ -46,8 +47,8 @@ export const StudentAssignmentsPage: React.FC = () => {
     setActiveTab('student-solve');
   };
 
-  const handleViewResult = (submissionId: string) => {
-    setSelectedStudentSubmissionId(submissionId);
+  const handleViewResult = (submissionId?: string | null) => {
+    setSelectedStudentSubmissionId(submissionId || null);
     setActiveTab('student-result');
   };
 
@@ -118,6 +119,16 @@ export const StudentAssignmentsPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setSelectedStudentSubmissionId(null);
+                setActiveTab('student-result');
+              }}
+              className="px-3.5 py-2 rounded-xl bg-[#8052FF]/15 hover:bg-[#8052FF]/25 border border-[#8052FF]/35 text-xs text-white transition-colors flex items-center gap-2"
+            >
+              <GraduationCap className="w-3.5 h-3.5 text-[#8052FF]" />
+              <span>My Results</span>
+            </button>
             <button
               onClick={loadAssignments}
               disabled={loading}
@@ -219,7 +230,10 @@ export const StudentAssignmentsPage: React.FC = () => {
                   </div>
 
                   {/* Title */}
-                  <h3 className="text-base font-medium text-white tracking-tight group-hover:text-[#8052FF] transition-colors mb-2">
+                  <h3
+                    onClick={() => handleStartAssignment(asgn.id)}
+                    className="text-base font-medium text-white tracking-tight cursor-pointer group-hover:text-[#8052FF] transition-colors mb-2"
+                  >
                     {asgn.title}
                   </h3>
 
@@ -250,7 +264,7 @@ export const StudentAssignmentsPage: React.FC = () => {
                 </div>
 
                 {/* Bottom Action Area */}
-                <div className="pt-4 border-t border-white/[0.06] flex items-center justify-between">
+                <div className="pt-4 border-t border-white/[0.06] flex items-center justify-between gap-2">
                   {asgn.score !== null && asgn.score !== undefined ? (
                     <div>
                       <span className="text-[10px] font-mono text-[#9A9A9A] uppercase block">Result</span>
@@ -268,19 +282,28 @@ export const StudentAssignmentsPage: React.FC = () => {
                   )}
 
                   {isCompleted ? (
-                    <button
-                      onClick={() => handleViewResult(asgn.submission_id || asgn.id)}
-                      className="px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-xs font-medium text-white transition-colors flex items-center gap-1.5"
-                    >
-                      <span>View Results</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleStartAssignment(asgn.id)}
+                        className="px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-xs font-medium text-[#BBB] hover:text-white transition-colors"
+                        title="Show assignment questions and responses"
+                      >
+                        Show Assignment
+                      </button>
+                      <button
+                        onClick={() => handleViewResult(asgn.submission_id)}
+                        className="px-4 py-2 rounded-xl bg-[#8052FF] hover:bg-[#6D3DF5] text-xs font-medium text-white transition-colors flex items-center gap-1.5 shadow-sm"
+                      >
+                        <span>View Results</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   ) : (
                     <button
                       onClick={() => handleStartAssignment(asgn.id)}
                       className="px-4 py-2 rounded-xl bg-[#8052FF] hover:bg-[#6D3DF5] text-xs font-medium text-white shadow-sm transition-all flex items-center gap-1.5"
                     >
-                      <span>Solve Assignment</span>
+                      <span>Show Assignment</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   )}

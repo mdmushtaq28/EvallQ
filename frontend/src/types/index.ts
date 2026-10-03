@@ -220,13 +220,35 @@ export interface StudentAssignmentDetail {
     id?: string;
     question_number: number;
     question_text: string;
+    question?: string;
     question_type?: string;
     maximum_marks: number;
+    max_marks?: number;
     topic: string;
     rubric?: string;
   }>;
   status: string;
   submission_id?: string | null;
+  is_submitted?: boolean;
+  submitted_answers?: Record<string, string>;
+}
+
+export interface StudentResultListItem {
+  submission_id: string;
+  assignment_id?: string | null;
+  assignment_title: string;
+  subject: string;
+  teacher_name: string;
+  status: 'APPROVED' | 'UNDER_REVIEW' | 'SUBMITTED' | string;
+  total_maximum_marks: number;
+  final_score?: number | null;
+  ai_suggested_score?: number | null;
+  teacher_score?: number | null;
+  percentage?: number | null;
+  teacher_feedback?: string | null;
+  question_count: number;
+  submitted_at: string;
+  evaluated_at?: string | null;
 }
 
 export interface TypedAnswerPayload {

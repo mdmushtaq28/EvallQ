@@ -87,6 +87,26 @@ class StudentAssignmentDetailResponse(BaseModel):
     questions: List[Dict[str, Any]] = Field(default_factory=list)
     status: str
     submission_id: Optional[str] = None
+    is_submitted: bool = False
+    submitted_answers: Optional[Dict[str, str]] = Field(default_factory=dict)
+
+
+class StudentResultListItem(BaseModel):
+    submission_id: str
+    assignment_id: Optional[str] = None
+    assignment_title: str
+    subject: str
+    teacher_name: str
+    status: str  # "APPROVED" (Evaluated), "UNDER_REVIEW", "SUBMITTED"
+    total_maximum_marks: float
+    final_score: Optional[float] = None
+    ai_suggested_score: Optional[float] = None
+    teacher_score: Optional[float] = None
+    percentage: Optional[float] = None
+    teacher_feedback: Optional[str] = None
+    question_count: int = 0
+    submitted_at: datetime
+    evaluated_at: Optional[datetime] = None
 
 
 # ---------------------------------------------------------------------------

@@ -13,6 +13,7 @@ from ...schemas.assignment import (
     StudentAssignmentListItem,
     StudentAssignmentDetailResponse,
     StudentTypedSubmissionRequest,
+    StudentResultListItem,
 )
 from ...schemas.assessment import (
     AssessmentEvaluationResponse,
@@ -53,6 +54,19 @@ async def list_student_assignments(
     for rec in assigned_records:
         asgn = rec.assignment
         sub = rec.submission
+        if not sub:
+            sub = (
+                db.query(AssessmentSubmission)
+                .filter(
+                    AssessmentSubmission.assignment_id == asgn.id,
+                    AssessmentSubmission.student_id == current_student.id
+                )
+                .order_by(AssessmentSubmission.created_at.desc())
+                .first()
+            )
+            if sub and not rec.submission_id:
+                rec.submission_id = sub.id
+                db.commit()
 
         # Compute accurate display status
         display_status = rec.status
@@ -129,6 +143,32 @@ async def get_student_assignment_detail(
             detail="Access denied: This assignment has not been assigned to your student account."
         )
 
+    # Check if student already has a submission for this assignment
+    sub = assignment_student.submission
+    if not sub:
+        sub = (
+            db.query(AssessmentSubmission)
+            .filter(
+                AssessmentSubmission.assignment_id == assignment.id,
+                AssessmentSubmission.student_id == current_student.id
+            )
+            .order_by(AssessmentSubmission.created_at.desc())
+            .first()
+        )
+        if sub and not assignment_student.submission_id:
+            assignment_student.submission_id = sub.id
+            db.commit()
+
+    is_submitted = sub is not None and (
+        assignment_student.status in ["SUBMITTED", "UNDER_REVIEW", "APPROVED", "EVALUATED"] or
+        sub.evaluation_status in ["completed", "pending"]
+    )
+
+    submitted_answers_dict = {}
+    if sub and sub.questions:
+        for q in sub.questions:
+            submitted_answers_dict[str(q.question_number)] = q.student_answer
+
     # Get exact teacher questions
     questions = assignment.get_questions_list()
 
@@ -142,8 +182,78 @@ async def get_student_assignment_detail(
         total_maximum_marks=assignment.total_maximum_marks,
         questions=questions,
         status=assignment_student.status,
-        submission_id=assignment_student.submission_id
+        submission_id=sub.id if sub else None,
+        is_submitted=is_submitted,
+        submitted_answers=submitted_answers_dict,
     )
+
+
+@router.get("/results", response_model=List[StudentResultListItem])
+async def list_student_results(
+    current_student: User = Depends(get_current_student),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns all evaluated and submitted coursework results for the authenticated student.
+    Enforces authorization: Only returns submissions belonging to current_student.id.
+    """
+    submissions = (
+        db.query(AssessmentSubmission)
+        .filter(
+            (AssessmentSubmission.student_id == current_student.id) |
+            (AssessmentSubmission.student_name.ilike(current_student.name))
+        )
+        .order_by(AssessmentSubmission.created_at.desc())
+        .all()
+    )
+
+    results: List[StudentResultListItem] = []
+    for sub in submissions:
+        # Determine human-in-the-loop status
+        is_approved = sub.approval_status == "approved"
+        status_label = "APPROVED" if is_approved else "UNDER_REVIEW"
+
+        # Final score is strictly the approved teacher/final score, NEVER fake premature score
+        final_score = (
+            sub.final_score if sub.final_score is not None
+            else sub.teacher_score if sub.teacher_score is not None
+            else sub.ai_suggested_score
+        ) if is_approved else None
+
+        percentage = (
+            round((final_score / sub.total_maximum_marks * 100.0), 1)
+            if (is_approved and sub.total_maximum_marks and sub.total_maximum_marks > 0 and final_score is not None)
+            else None
+        )
+
+        asgn = sub.assignment
+        title = asgn.title if asgn else (
+            sub.original_filename.replace(".typed", "").replace(".png", "").replace(".pdf", "")
+        )
+        subject = asgn.subject if asgn else "Academic Coursework"
+        teacher_name = asgn.teacher_name if (asgn and asgn.teacher_name) else "Instructor"
+
+        results.append(
+            StudentResultListItem(
+                submission_id=sub.id,
+                assignment_id=sub.assignment_id,
+                assignment_title=title,
+                subject=subject,
+                teacher_name=teacher_name,
+                status=status_label,
+                total_maximum_marks=sub.total_maximum_marks or 0.0,
+                final_score=final_score,
+                ai_suggested_score=sub.ai_suggested_score,
+                teacher_score=sub.teacher_score,
+                percentage=percentage,
+                teacher_feedback=sub.teacher_feedback if is_approved else None,
+                question_count=len(sub.questions),
+                submitted_at=sub.created_at,
+                evaluated_at=sub.updated_at if is_approved else None,
+            )
+        )
+
+    return results
 
 
 @router.post("/assignments/{assignment_id}/submit", response_model=AssessmentEvaluationResponse)
@@ -351,7 +461,13 @@ async def get_student_submission_result(
         )
 
     # Security check: Student can only view their own submission
-    if submission.student_id and submission.student_id != current_student.id:
+    if submission.student_id:
+        if submission.student_id != current_student.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied: You cannot view results belonging to another student."
+            )
+    elif submission.student_name and submission.student_name.lower() != current_student.name.lower():
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied: You cannot view results belonging to another student."
