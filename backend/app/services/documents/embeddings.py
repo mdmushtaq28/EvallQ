@@ -19,13 +19,12 @@ def get_embedding_model():
 class LocalEmbeddingService:
     """
     On-device vector embedding and similarity search provider.
-    Runs ONNX Runtime on Host CPU (x86_64) during development,
-    with direct architectural migration path to Snapdragon Hexagon NPU via QNN EP.
+    Runs ONNX Runtime locally.
     """
 
     def __init__(self):
         self.device = settings.DEV_ENVIRONMENT
-        self.target_upgrade = "Snapdragon Copilot+ PC (Hexagon NPU via QNN Execution Provider)"
+        self.target_upgrade = "On-Device Neural Engine"
         self.model_name = "BAAI/bge-small-en-v1.5 (Quantized ONNX)"
         self.dimension = 384
 
@@ -35,8 +34,8 @@ class LocalEmbeddingService:
             "model": "bge-small-en-v1.5",
             "runtime": "fastembed / onnxruntime",
             "dimension": self.dimension,
-            "target": "host",
-            "snapdragon_target": "ONNX Runtime (QNN EP) / Qualcomm AI Hub Nomic-Embed",
+            "target": "local",
+            "engine_target": "ONNX Runtime / Local Embedding Engine",
         }
 
     def generate_embeddings(self, texts: List[str]) -> List[List[float]]:

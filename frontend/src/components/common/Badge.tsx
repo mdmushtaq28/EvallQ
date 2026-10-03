@@ -2,7 +2,7 @@ import React from 'react';
 
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'brand' | 'snapdragon' | 'outline';
+  variant?: 'default' | 'success' | 'warning' | 'danger' | 'brand' | 'accent' | 'outline';
   size?: 'sm' | 'md';
   dot?: boolean;
   className?: string;
@@ -23,23 +23,23 @@ export const Badge: React.FC<BadgeProps> = ({
   };
 
   const variantClasses = {
-    default: 'bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700',
-    success: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800/80',
-    warning: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800/80',
-    danger: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800/80',
-    brand: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800/80',
-    snapdragon: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-semibold',
-    outline: 'border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300',
+    default: 'bg-white/[0.04] text-[#BDBDBD] border border-white/[0.08]',
+    success: 'bg-[#15846E]/15 text-[#34D399] border border-[#15846E]/30',
+    warning: 'bg-[#FFB829]/15 text-[#FFB829] border border-[#FFB829]/30',
+    danger: 'bg-rose-500/15 text-rose-400 border border-rose-500/30',
+    brand: 'bg-[#8052FF]/15 text-[#8052FF] border border-[#8052FF]/30',
+    accent: 'bg-[#8052FF]/15 text-[#9A75FF] border border-[#8052FF]/30 font-medium',
+    outline: 'border border-white/[0.12] text-[#9A9A9A]',
   };
 
   const dotClasses = {
-    default: 'bg-slate-500',
-    success: 'bg-emerald-500 animate-pulse',
-    warning: 'bg-amber-500',
+    default: 'bg-[#9A9A9A]',
+    success: 'bg-[#15846E] animate-pulse',
+    warning: 'bg-[#FFB829]',
     danger: 'bg-rose-500',
-    brand: 'bg-indigo-500',
-    snapdragon: 'bg-rose-500',
-    outline: 'bg-slate-400',
+    brand: 'bg-[#8052FF]',
+    accent: 'bg-[#8052FF]',
+    outline: 'bg-[#9A9A9A]',
   };
 
   return (

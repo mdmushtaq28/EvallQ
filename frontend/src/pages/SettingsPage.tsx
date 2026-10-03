@@ -26,7 +26,6 @@ export const SettingsPage: React.FC = () => {
     setInferenceDevice,
     isDemoMode,
     toggleDemoMode,
-    systemStatus,
     modelStatus,
     backendConnected,
     backendLoading,
@@ -59,7 +58,7 @@ export const SettingsPage: React.FC = () => {
               Configuration
             </Badge>
             <Badge variant="outline" size="sm">
-              Built for Snapdragon AI PCs
+              100% On-Device AI
             </Badge>
           </div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">
@@ -72,7 +71,7 @@ export const SettingsPage: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <Button
-            variant={isDemoMode ? 'snapdragon' : 'outline'}
+            variant={isDemoMode ? 'accent' : 'outline'}
             size="sm"
             icon={<Sliders className="w-4 h-4" />}
             onClick={toggleDemoMode}
@@ -82,11 +81,11 @@ export const SettingsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 1. Inference Hardware & Snapdragon Target Card */}
+      {/* 1. Inference Hardware & Local Acceleration Card */}
       <Card>
         <CardHeader
-          title="Inference Device & Hardware Target"
-          subtitle="Targeted for Snapdragon X Elite / X Plus / Snapdragon X2 NPU with fallback support"
+          title="Inference Engine & Hardware Acceleration"
+          subtitle="Optimized for on-device execution with local CPU and GPU acceleration"
           icon={<Cpu className="w-5 h-5" />}
         />
 
@@ -95,36 +94,36 @@ export const SettingsPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
-                Current Development Environment
+                Current Execution Environment
               </span>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                  {modelStatus?.target.development_environment || 'Host CPU / x86_64'}
+                  {modelStatus?.target.development_environment || 'Local Engine / Host'}
                 </span>
                 <Badge variant="default" size="sm">
                   Active
                 </Badge>
               </div>
               <p className="text-xs text-slate-500 leading-relaxed">
-                Development machine running standard Python/FastAPI environment with ONNX Runtime CPU execution provider.
+                Running local FastAPI, Ollama, and ONNX Runtime execution providers.
               </p>
             </div>
 
-            <div className="p-4 rounded-xl bg-rose-500/5 dark:bg-rose-950/20 border border-rose-500/20 space-y-2">
-              <span className="text-[11px] font-semibold text-rose-500 uppercase tracking-wider block flex items-center gap-1.5">
+            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] space-y-2">
+              <span className="text-[11px] font-semibold text-[#8052FF] uppercase tracking-wider block flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5" />
-                Snapdragon Deployment Target
+                Local Hardware Acceleration
               </span>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-rose-600 dark:text-rose-400">
-                  {modelStatus?.target.platform ? `${modelStatus.target.platform} (Hexagon NPU)` : 'Snapdragon X Elite / X Plus / Snapdragon X2 NPU'}
+                <span className="text-sm font-normal text-white">
+                  {modelStatus?.target.platform || 'EvallQ On-Device AI'}
                 </span>
-                <Badge variant="snapdragon" size="sm">
-                  Target Platform
+                <Badge variant="accent" size="sm">
+                  Active Engine
                 </Badge>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Snapdragon-powered HP PCs running Qualcomm AI Hub compatible quantized INT4/W4A16 models with QNN Execution Provider.
+                Running quantized local models with fast, private on-device execution.
               </p>
             </div>
           </div>
@@ -137,27 +136,17 @@ export const SettingsPage: React.FC = () => {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {(
                 [
-                  { id: 'AUTO', label: 'AUTO (Recommended)', desc: 'Detect best available EP' },
+                  { id: 'AUTO', label: 'AUTO (Recommended)', desc: 'Detect best available accelerator' },
                   { id: 'CPU', label: 'CPU (Host)', desc: 'Universal compatibility' },
-                  { id: 'GPU', label: 'GPU (DirectML)', desc: 'DirectX / Vulkan runtime' },
-                  {
-                    id: 'NPU',
-                    label: 'NPU (Snapdragon)',
-                    desc: 'Qualcomm QNN / Hexagon',
-                    targetOnly: true,
-                  },
-                ] as Array<{ id: InferenceDevice; label: string; desc: string; targetOnly?: boolean }>
+                  { id: 'GPU', label: 'GPU (DirectML / CUDA)', desc: 'High-speed parallel compute' },
+                  { id: 'ENGINE', label: 'Local Engine', desc: 'On-device neural inference' },
+                ] as Array<{ id: InferenceDevice; label: string; desc: string }>
               ).map(dev => {
                 const isSelected = inferenceDevice === dev.id;
                 return (
                   <div
                     key={dev.id}
                     onClick={() => {
-                      if (dev.targetOnly && !systemStatus.isSnapdragonDetected) {
-                        alert(
-                          'Note: Hexagon NPU is targeted for Snapdragon-powered PCs. On current x86_64 host, execution automatically falls back to CPU.'
-                        );
-                      }
                       setInferenceDevice(dev.id as InferenceDevice);
                     }}
                     className={`p-3.5 rounded-xl border text-left cursor-pointer transition-all ${
@@ -170,11 +159,6 @@ export const SettingsPage: React.FC = () => {
                       <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                         {dev.label}
                       </span>
-                      {dev.targetOnly && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-500 font-mono font-semibold">
-                          TARGET
-                        </span>
-                      )}
                     </div>
                     <span className="text-[11px] text-slate-500 leading-tight block">
                       {dev.desc}
@@ -190,7 +174,7 @@ export const SettingsPage: React.FC = () => {
       {/* 2. AI Model Selection */}
       <Card>
         <CardHeader
-          title="Local AI Models (Qualcomm AI Hub Compatible)"
+          title="Local AI Models & Engine Configurations"
           subtitle="Select pre-quantized offline weights for the on-device AI runtime"
           icon={<Cpu className="w-5 h-5" />}
         />
@@ -232,9 +216,9 @@ export const SettingsPage: React.FC = () => {
               onChange={e => setSelectedLLM(e.target.value)}
               className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
             >
-              <option value="qwen2.5:0.5b">Qwen 2.5 (0.5B Instruct - Local Host Active)</option>
-              <option value="llama-3.2-3b">Llama-3.2-3B-Instruct (Qualcomm AI Hub Target)</option>
-              <option value="phi-3.5-mini">Phi-3.5-mini-instruct (Snapdragon Target)</option>
+              <option value="qwen2.5:0.5b">Qwen 2.5 (0.5B Instruct - Local Active)</option>
+              <option value="qwen2.5:1.5b">Qwen 2.5 (1.5B Instruct - Local Standby)</option>
+              <option value="llama-3.2-3b">Llama-3.2 (3B Instruct - Quantized Standby)</option>
             </select>
           </div>
 
@@ -254,8 +238,8 @@ export const SettingsPage: React.FC = () => {
               onChange={e => setSelectedSpeech(e.target.value)}
               className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
             >
-              <option value="whisper-tiny">Whisper-Tiny (INT8 CTranslate2 - Host Active)</option>
-              <option value="whisper-base">Whisper-Base (Qualcomm AI Hub / QNN Target)</option>
+              <option value="whisper-tiny">Whisper-Tiny (INT8 CTranslate2 - Local Active)</option>
+              <option value="whisper-base">Whisper-Base (INT8 - Local Standby)</option>
             </select>
           </div>
 
@@ -275,8 +259,8 @@ export const SettingsPage: React.FC = () => {
               onChange={e => setSelectedVision(e.target.value)}
               className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
             >
-              <option value="ultra-face-onnx">UltraFace-320 (1.21 MB ONNX - Host Active)</option>
-              <option value="mediapipe-face">MediaPipe Face Detection (Qualcomm AI Hub Target)</option>
+              <option value="ultra-face-onnx">UltraFace-320 (1.21 MB ONNX - Local Active)</option>
+              <option value="mediapipe-face">MediaPipe Face Detection (ONNX - Local Standby)</option>
             </select>
           </div>
         </div>
@@ -414,10 +398,10 @@ export const SettingsPage: React.FC = () => {
           />
 
           <div className="space-y-3 text-xs">
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-              <span className="text-slate-500">Database Location:</span>
-              <span className="font-mono text-slate-700 dark:text-slate-300 text-[11px]">
-                backend/focusflow.db
+            <div className="flex items-center justify-between p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.08]">
+              <span className="text-[#9A9A9A]">Database Storage:</span>
+              <span className="font-mono text-white text-[11px]">
+                SQLite (Private On-Device)
               </span>
             </div>
 

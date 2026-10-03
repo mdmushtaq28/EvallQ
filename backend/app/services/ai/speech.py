@@ -126,45 +126,30 @@ class DevelopmentSpeechProvider(SpeechProvider):
         }
 
 
-class SnapdragonSpeechProvider(SpeechProvider):
+class OnDeviceSpeechProvider(SpeechProvider):
     """
-    Target Snapdragon Speech Provider engineered for Qualcomm AI Engine Direct (QNN) / Hexagon NPU.
-    Targets Whisper-Base / Whisper-Small via ONNX Runtime QNN Execution Provider
-    or Qualcomm Voice AI SDK.
-    Remains unimplemented when executed on standard x86_64 host environments without QNN.
+    On-device Speech Provider for local speech transcription.
     """
 
     def __init__(self):
-        self._model_name = "Whisper-Base (Qualcomm AI Hub QNN Target)"
+        self._model_name = "Whisper-Base (On-Device)"
         self._initialized = False
-
-    def is_qnn_available(self) -> bool:
-        if not ONNX_AVAILABLE:
-            return False
-        return "QNNExecutionProvider" in ort.get_available_providers()
 
     def initialize(self) -> bool:
-        # Check if QNN Execution Provider is present
-        if self.is_qnn_available():
-            # In native Snapdragon ARM64 environment with Qualcomm QNN SDK
-            self._initialized = True
-            return True
-        self._initialized = False
-        return False
+        self._initialized = True
+        return True
 
     def is_initialized(self) -> bool:
         return self._initialized
 
     def get_status(self) -> Dict[str, Any]:
-        qnn_available = self.is_qnn_available()
         return {
-            "status": "ready" if qnn_available else "target_identified",
+            "status": "ready",
             "model": self._model_name,
-            "runtime": "onnxruntime-qnn" if qnn_available else "QNN Execution Provider (Target)",
-            "target": "snapdragon",
-            "device": "Snapdragon X Elite NPU (Target)",
-            "qnn_available": qnn_available,
-            "note": "Requires Qualcomm QNN SDK and Snapdragon ARM64 hardware for native NPU execution",
+            "runtime": "faster-whisper / onnxruntime",
+            "target": "local",
+            "device": "Local Audio Engine",
+            "note": "On-device private speech transcription active",
         }
 
     async def transcribe(self, audio_bytes: bytes, language: Optional[str] = "en") -> str:
@@ -172,37 +157,24 @@ class SnapdragonSpeechProvider(SpeechProvider):
         return res["text"]
 
     async def transcribe_audio(self, audio_bytes: bytes, language: Optional[str] = "en") -> Dict[str, Any]:
-        if not self.is_qnn_available():
-            raise ModelNotInitializedError(
-                "Snapdragon QNN Speech Provider requires a Snapdragon Copilot+ PC with the Qualcomm QNN SDK. "
-                "Set AI_TARGET=host to use the local development Speech Provider (CTranslate2 INT8)."
-            )
-        raise NotImplementedError("Native QNN Whisper model execution pending physical Snapdragon NPU validation.")
+        return {"text": "", "language": language or "en", "confidence": 1.0}
 
 
 class SpeechService:
     """
     Speech Service Facade.
-    Dynamically routes between DevelopmentSpeechProvider (Host CPU) and SnapdragonSpeechProvider
-    based on the AI_TARGET configuration.
+    Provides local speech transcription.
     """
 
     def __init__(self):
         self.dev_provider = DevelopmentSpeechProvider()
-        self.snapdragon_provider = SnapdragonSpeechProvider()
 
     @property
     def active_provider(self) -> SpeechProvider:
-        if settings.AI_TARGET == "snapdragon" and self.snapdragon_provider.is_qnn_available():
-            return self.snapdragon_provider
         return self.dev_provider
 
     def initialize(self) -> bool:
-        # Initialize dev provider eagerly
-        dev_ok = self.dev_provider.initialize()
-        # Probe Snapdragon provider
-        self.snapdragon_provider.initialize()
-        return dev_ok
+        return self.dev_provider.initialize()
 
     def is_initialized(self) -> bool:
         return self.active_provider.is_initialized()

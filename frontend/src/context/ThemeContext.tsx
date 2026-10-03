@@ -12,9 +12,9 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const saved = localStorage.getItem('focusflow_theme');
+    const saved = localStorage.getItem('evallq_theme') || localStorage.getItem('focusflow_theme');
     if (saved === 'dark' || saved === 'light') return saved;
-    return 'dark'; // Default to dark mode for modern AI desktop aesthetic
+    return 'dark'; // Default to pure black dark mode for Dala aesthetic
   });
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } else {
       root.classList.remove('dark');
     }
-    localStorage.setItem('focusflow_theme', theme);
+    localStorage.setItem('evallq_theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {

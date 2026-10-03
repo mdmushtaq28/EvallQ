@@ -9,6 +9,8 @@ import { StudyMaterialsPage } from './pages/StudyMaterialsPage';
 import { FocusModePage } from './pages/FocusModePage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { AssessmentPage } from './pages/AssessmentPage';
+import { TeacherDashboardPage } from './pages/TeacherDashboardPage';
 
 const MainLayout: React.FC = () => {
   const { activeTab } = useApp();
@@ -24,6 +26,13 @@ const MainLayout: React.FC = () => {
         return <StudyMaterialsPage />;
       case 'focus':
         return <FocusModePage />;
+      case 'assessment':
+        return <AssessmentPage />;
+      case 'teacher-dashboard':
+      case 'teacher-assignments':
+      case 'teacher-review':
+      case 'teacher-analytics':
+        return <TeacherDashboardPage />;
       case 'analytics':
         return <AnalyticsPage />;
       case 'settings':
@@ -34,7 +43,7 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans transition-colors">
+    <div className="flex h-screen w-screen overflow-hidden bg-black text-white font-sans selection:bg-[#8052FF] selection:text-white">
       {/* Navigation Sidebar */}
       <Sidebar
         collapsed={sidebarCollapsed}

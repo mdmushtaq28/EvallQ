@@ -4,50 +4,83 @@
 
 @layer base {
   :root {
-    --bg-primary: #f8fafc;
-    --bg-surface: #ffffff;
-    --bg-card: #ffffff;
-    --border-color: #e2e8f0;
-    --text-primary: #0f172a;
-    --text-secondary: #64748b;
+    --bg-primary: #000000;
+    --bg-surface: #080808;
+    --bg-card: #0A0A0A;
+    --border-color: rgba(255, 255, 255, 0.08);
+    --text-primary: #ffffff;
+    --text-secondary: #9a9a9a;
+    --text-tertiary: #bdbdbd;
+    --accent-violet: #8052ff;
+    --accent-gold: #ffb829;
+    --accent-green: #15846e;
   }
 
   .dark {
-    --bg-primary: #0b0f19;
-    --bg-surface: #111827;
-    --bg-card: #161f30;
-    --border-color: #1e293b;
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
+    --bg-primary: #000000;
+    --bg-surface: #080808;
+    --bg-card: #0A0A0A;
+    --border-color: rgba(255, 255, 255, 0.08);
+    --text-primary: #ffffff;
+    --text-secondary: #9a9a9a;
+    --text-tertiary: #bdbdbd;
+    --accent-violet: #8052ff;
+    --accent-gold: #ffb829;
+    --accent-green: #15846e;
   }
 
-  body {
+  html, body {
+    background-color: #000000;
+    color: #ffffff;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-weight: 300;
   }
 
-  /* Custom sleek scrollbar */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
+
+  /* Custom sleek ultra-dark scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
 
   ::-webkit-scrollbar-track {
-    background: transparent;
+    background: #000000;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.2);
+    background: rgba(255, 255, 255, 0.12);
     border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(148, 163, 184, 0.4);
+    background: rgba(255, 255, 255, 0.25);
   }
 }
 
 @layer utilities {
-  .glass-panel {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+  .dala-card {
+    background-color: #0A0A0A;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+  }
+
+  .dala-card-hover {
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .dala-card-hover:hover {
+    border-color: rgba(255, 255, 255, 0.18);
+    background-color: #111111;
+  }
+
+  .dala-border {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .dala-pill {
+    border-radius: 9999px;
   }
 }

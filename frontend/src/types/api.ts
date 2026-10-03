@@ -17,12 +17,12 @@ export interface ComponentStatus {
   target?: string | null;
 }
 
-export interface SnapdragonStatus {
+export interface EngineStatus {
   status: string;
   device: string;
   runtime: string;
   validated: boolean;
-  qnn_available: boolean;
+  acceleration_available?: boolean;
   optimization_status: string;
 }
 
@@ -37,7 +37,7 @@ export interface ModelStatusResponse {
   speech: ComponentStatus;
   vision: ComponentStatus;
   embeddings?: ComponentStatus;
-  snapdragon?: SnapdragonStatus;
+  engine?: EngineStatus;
   target: TargetStatus;
 }
 

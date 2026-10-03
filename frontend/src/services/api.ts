@@ -17,6 +17,16 @@ import type {
   AnalyticsOverviewResponse,
   AnalyticsTrendsResponse,
   AnalyticsExportData,
+  AssessmentUploadResponse,
+  OCRVerifyRequest,
+  OCRVerifyResponse,
+  AssessmentEvaluationResponse,
+  TeacherReviewRequest,
+  AssessmentListItem,
+  AssessmentAnalyticsResponse,
+  AssignmentItem,
+  TeacherReviewQueueItem,
+  TeacherDashboardStats,
 } from '../types';
 const getApiBaseUrl = (): string => {
   const envUrl = import.meta.env.VITE_API_URL;
@@ -393,13 +403,179 @@ class ApiService {
     const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = downloadUrl;
-    link.download = `focusflow_study_export_${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = `evallq_study_export_${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(link);
     link.click();
     link.remove();
     window.URL.revokeObjectURL(downloadUrl);
   }
-}
 
+  // =========================================================================
+  // ASSESSMENT INTELLIGENCE METHODS
+  // =========================================================================
+
+  public getAssessmentPreviewUrl(submissionId: string, page: number = 1): string {
+    return `${this.baseUrl}/api/assessment/${encodeURIComponent(submissionId)}/preview?page=${page}`;
+  }
+
+  public async uploadAssessment(
+    file: File,
+    studentName?: string,
+    assignmentId?: string
+  ): Promise<AssessmentUploadResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (studentName && studentName.trim()) {
+      formData.append('student_name', studentName.trim());
+    }
+    if (assignmentId && assignmentId.trim()) {
+      formData.append('assignment_id', assignmentId.trim());
+    }
+
+    const url = `${this.baseUrl}/api/assessment/upload`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s for full OCR
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      if (!response.ok) {
+        let errDetail = `Server returned ${response.status}`;
+        try {
+          const errJson = await response.json();
+          if (errJson?.detail) errDetail = errJson.detail;
+        } catch {
+          // fallback to status text
+        }
+        throw new Error(errDetail);
+      }
+      return (await response.json()) as AssessmentUploadResponse;
+    } catch (err: unknown) {
+      clearTimeout(timeoutId);
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          throw new Error('Assessment upload timed out. OCR took longer than expected.');
+        }
+        throw err;
+      }
+      throw new Error('An unknown error occurred during assessment upload.');
+    }
+  }
+
+  public async getAssessment(submissionId: string): Promise<any> {
+    return this.request<any>(`/api/assessment/${encodeURIComponent(submissionId)}`);
+  }
+
+  public async verifyAssessmentOCR(submissionId: string, data: OCRVerifyRequest): Promise<OCRVerifyResponse> {
+    return this.request<OCRVerifyResponse>(
+      `/api/assessment/${encodeURIComponent(submissionId)}/verify-ocr`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  public async evaluateAssessment(submissionId: string, rubricGuidance?: string): Promise<AssessmentEvaluationResponse> {
+    const query = rubricGuidance ? `?rubric_guidance=${encodeURIComponent(rubricGuidance)}` : '';
+    return this.request<AssessmentEvaluationResponse>(
+      `/api/assessment/${encodeURIComponent(submissionId)}/evaluate${query}`,
+      {
+        method: 'POST',
+      },
+      120000 // 120s for multi-question LLM grading
+    );
+  }
+
+  public async reviewAssessment(submissionId: string, data: TeacherReviewRequest): Promise<AssessmentEvaluationResponse> {
+    return this.request<AssessmentEvaluationResponse>(
+      `/api/assessment/${encodeURIComponent(submissionId)}/review`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  public async getAssessmentList(limit: number = 20): Promise<AssessmentListItem[]> {
+    return this.request<AssessmentListItem[]>(`/api/assessment/list/all?limit=${limit}`);
+  }
+
+  public async getAssessmentAnalytics(): Promise<AssessmentAnalyticsResponse> {
+    return this.request<AssessmentAnalyticsResponse>('/api/assessment/analytics/summary');
+  }
+
+  // =========================================================================
+  // Teacher Intelligence API
+  // =========================================================================
+
+  public async createAssignment(data: {
+    title: string;
+    subject: string;
+    instructions?: string;
+    total_maximum_marks: number;
+    rubric_guidance?: string;
+    expected_concepts?: string[];
+    questions?: Array<{
+      question_number: number;
+      question_text: string;
+      maximum_marks: number;
+      topic: string;
+      rubric?: string;
+    }>;
+  }): Promise<AssignmentItem> {
+    return this.request<AssignmentItem>('/api/teacher/assignments', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async getAssignments(): Promise<AssignmentItem[]> {
+    return this.request<AssignmentItem[]>('/api/teacher/assignments');
+  }
+
+  public async getAssignment(assignmentId: string): Promise<AssignmentItem> {
+    return this.request<AssignmentItem>(`/api/teacher/assignments/${encodeURIComponent(assignmentId)}`);
+  }
+
+  public async getTeacherReviewQueue(): Promise<TeacherReviewQueueItem[]> {
+    return this.request<TeacherReviewQueueItem[]>('/api/teacher/review-queue');
+  }
+
+  public async getTeacherReviewSubmission(submissionId: string): Promise<any> {
+    return this.request<any>(`/api/teacher/review/${encodeURIComponent(submissionId)}`);
+  }
+
+  public async saveTeacherScore(submissionId: string, data: {
+    teacher_score?: number;
+    teacher_feedback?: string;
+    question_updates?: Array<{
+      question_id: string;
+      teacher_marks: number;
+      teacher_feedback?: string;
+    }>;
+    approve?: boolean;
+  }): Promise<any> {
+    return this.request<any>(`/api/teacher/review/${encodeURIComponent(submissionId)}/score`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async approveTeacherSubmission(submissionId: string): Promise<any> {
+    return this.request<any>(`/api/teacher/review/${encodeURIComponent(submissionId)}/approve`, {
+      method: 'POST',
+    });
+  }
+
+  public async getTeacherDashboardStats(): Promise<TeacherDashboardStats> {
+    return this.request<TeacherDashboardStats>('/api/teacher/dashboard-stats');
+  }
+}
 
 export const api = new ApiService();

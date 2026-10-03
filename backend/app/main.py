@@ -13,6 +13,8 @@ from app.api.routes.documents import router as documents_router
 from app.api.routes.focus import router as focus_router
 from app.api.routes.speech import router as speech_router
 from app.api.routes.analytics import router as analytics_router
+from app.api.routes.assessment import router as assessment_router
+from app.api.routes.teacher import router as teacher_router
 from app.services.ai.base import ModelNotInitializedError
 
 
@@ -29,7 +31,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="Private On-Device AI Study Companion Backend engineered for Snapdragon-powered PCs.",
+    description="Private On-Device AI Academic Evaluation & Teaching Engine for EvallQ.",
     lifespan=lifespan,
 )
 
@@ -76,4 +78,6 @@ app.include_router(documents_router, prefix="/api")
 app.include_router(focus_router, prefix="/api")
 app.include_router(speech_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
+app.include_router(assessment_router, prefix="/api")
+app.include_router(teacher_router, prefix="/api")
 

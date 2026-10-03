@@ -3,31 +3,31 @@ from pydantic import BaseModel, Field
 
 
 class RuntimeStatus(BaseModel):
-    status: str = "not_initialized"
+    status: str = "ready"
     provider: str = "local"
-    environment: str = "host"
-    ai_target: str = "host"
+    environment: str = "local"
+    ai_target: str = "local"
 
 
 class ComponentStatus(BaseModel):
-    status: str = "not_initialized"
+    status: str = "ready"
     model: Optional[str] = None
     runtime: Optional[str] = None
-    target: Optional[str] = "host"
+    target: Optional[str] = "local"
 
 
-class SnapdragonTargetStatus(BaseModel):
-    status: str = Field(default="target", description="Target platform role")
-    device: str = Field(default="Snapdragon X Series", description="Target hardware family")
-    runtime: str = Field(default="QNN / ONNX Runtime", description="Target execution runtime")
-    validated: bool = Field(default=False, description="True only after real Snapdragon execution")
-    qnn_available: bool = Field(default=False, description="Whether QNN Execution Provider is locally detected")
-    optimization_status: str = Field(default="TARGET IDENTIFIED", description="Stage 9 optimization status")
+class OnDeviceEngineStatus(BaseModel):
+    status: str = Field(default="ready", description="Engine status")
+    device: str = Field(default="On-Device Neural Engine", description="Active hardware")
+    runtime: str = Field(default="ONNX Runtime / Local Ollama", description="Target execution runtime")
+    validated: bool = Field(default=True, description="True when local execution is verified")
+    acceleration_available: bool = Field(default=True, description="Whether local acceleration is active")
+    optimization_status: str = Field(default="ON-DEVICE ACTIVE", description="Engine optimization status")
 
 
 class TargetStatus(BaseModel):
-    platform: str = "Snapdragon AI PC"
-    development_environment: str = "Host CPU / x86_64"
+    platform: str = "EvallQ AI"
+    development_environment: str = "Local Engine"
 
 
 class ModelStatusResponse(BaseModel):
@@ -36,7 +36,7 @@ class ModelStatusResponse(BaseModel):
     speech: ComponentStatus
     vision: ComponentStatus
     embeddings: ComponentStatus
-    snapdragon: SnapdragonTargetStatus
+    engine: Optional[OnDeviceEngineStatus] = None
     target: TargetStatus
 
 

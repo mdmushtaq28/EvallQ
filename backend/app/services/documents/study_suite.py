@@ -8,7 +8,7 @@ from .embeddings import embedding_service
 from ...core.config import settings
 
 DOCUMENT_QA_SYSTEM_PROMPT = (
-    "You are FocusFlow AI Study Assistant, a private on-device academic companion.\n"
+    "You are EvallQ AI Study Assistant, a private on-device academic companion.\n"
     "You answer questions grounded strictly in the provided document context excerpts.\n\n"
     "Guidelines:\n"
     "1. Be concise, precise, and pedagogically helpful.\n"
@@ -18,7 +18,7 @@ DOCUMENT_QA_SYSTEM_PROMPT = (
 )
 
 DOCUMENT_SUMMARY_SYSTEM_PROMPT = (
-    "You are FocusFlow AI Summarizer, a private on-device study assistant.\n"
+    "You are EvallQ AI Summarizer, a private on-device study assistant.\n"
     "Generate an executive summary and key takeaways for the provided course document.\n"
     "Respond in the following format:\n"
     "SUMMARY:\n<1-2 concise paragraphs explaining core topics and concepts>\n\n"
@@ -26,7 +26,7 @@ DOCUMENT_SUMMARY_SYSTEM_PROMPT = (
 )
 
 QUIZ_GENERATION_SYSTEM_PROMPT = (
-    "You are FocusFlow AI Quiz Generator. Based on the document excerpts provided, "
+    "You are EvallQ AI Quiz Generator. Based on the document excerpts provided, "
     "generate 3 distinct multiple-choice questions to test student comprehension.\n\n"
     "CRITICAL RULES FOR EACH QUESTION:\n"
     "1. \"options\": MUST be a JSON array of EXACTLY 4 distinct strings.\n"
@@ -59,7 +59,7 @@ QUIZ_GENERATION_SYSTEM_PROMPT = (
 )
 
 REGENERATE_QUESTION_SYSTEM_PROMPT = (
-    "You are FocusFlow AI Quiz Generator. A previously generated question was rejected due to duplicate or invalid options.\n"
+    "You are EvallQ AI Quiz Generator. A previously generated question was rejected due to duplicate or invalid options.\n"
     "Generate ONE high-quality multiple-choice question from the provided document excerpt.\n\n"
     "CRITICAL RULES:\n"
     "1. \"options\": MUST be a JSON array of EXACTLY 4 distinct strings.\n"
@@ -86,7 +86,7 @@ REGENERATE_QUESTION_SYSTEM_PROMPT = (
 )
 
 FLASHCARD_GENERATION_SYSTEM_PROMPT = (
-    "You are FocusFlow AI Flashcard Generator. Based on the document excerpts provided, "
+    "You are EvallQ AI Flashcard Generator. Based on the document excerpts provided, "
     "create 4 to 6 high-yield concept flashcards for active recall study.\n"
     "Output ONLY a valid JSON array of objects with no extraneous text.\n"
     "Each object must have the following keys:\n"

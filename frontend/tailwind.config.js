@@ -8,35 +8,57 @@ export default {
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: '#eef2ff',
-          100: '#e0e7ff',
-          200: '#c7d2fe',
-          300: '#a5b4fc',
-          400: '#818cf8',
-          500: '#6366f1', // Electric Indigo
-          600: '#4f46e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
-          950: '#1e1b4b',
+        dala: {
+          black: '#000000',
+          surface: '#080808',
+          card: '#0A0A0A',
+          cardHover: '#111111',
+          border: 'rgba(255, 255, 255, 0.08)',
+          borderHover: 'rgba(255, 255, 255, 0.18)',
+          violet: '#8052FF',
+          violetHover: '#6E3EF0',
+          violetLight: '#9A75FF',
+          violetSubtle: 'rgba(128, 82, 255, 0.12)',
+          gold: '#FFB829',
+          goldSubtle: 'rgba(255, 184, 41, 0.12)',
+          green: '#15846E',
+          greenSubtle: 'rgba(21, 132, 110, 0.15)',
+          text: '#FFFFFF',
+          muted: '#9A9A9A',
+          sub: '#BDBDBD',
         },
-        snapdragon: {
-          light: '#ff6f61',
-          DEFAULT: '#e63946',
-          dark: '#b71c1c',
-          glow: 'rgba(230, 57, 70, 0.25)',
+        brand: {
+          50: '#f5f3ff',
+          100: '#ede9fe',
+          200: '#ddd6fe',
+          300: '#c4b5fd',
+          400: '#a78bfa',
+          500: '#8052FF', // Dala Primary Accent
+          600: '#6E3EF0',
+          700: '#5B21B6',
+          800: '#4C1D95',
+          900: '#2E1065',
+          950: '#000000',
+        },
+        accent: {
+          light: '#9A75FF',
+          DEFAULT: '#8052FF',
+          dark: '#6E3EF0',
+          glow: 'rgba(128, 82, 255, 0.25)',
         },
         surface: {
-          dark: '#0d1117',
-          cardDark: '#161b22',
-          borderDark: '#30363d',
-          hoverDark: '#21262d',
+          dark: '#000000',
+          cardDark: '#0A0A0A',
+          borderDark: 'rgba(255, 255, 255, 0.08)',
+          hoverDark: '#121212',
           light: '#f8fafc',
           cardLight: '#ffffff',
           borderLight: '#e2e8f0',
           hoverLight: '#f1f5f9',
         }
+      },
+      borderRadius: {
+        'card': '24px',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
@@ -44,6 +66,7 @@ export default {
       },
       animation: {
         'pulse-subtle': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'float-slow': 'float 8s ease-in-out infinite',
       }
     },
   },

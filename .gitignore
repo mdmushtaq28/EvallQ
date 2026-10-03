@@ -56,3 +56,4 @@ scratch/
 *.log
 .system_generated/
 backend/.venv/
+data/

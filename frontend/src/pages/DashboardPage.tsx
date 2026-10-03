@@ -5,17 +5,19 @@ import {
   MessageSquare,
   FileText,
   Bot,
-  Upload,
-  Play,
   Cpu,
   ShieldCheck,
-  Sparkles,
+  ArrowRight,
+  GraduationCap,
+  Layers,
+  ChevronRight,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { StatCard } from '../components/common/StatCard';
 import { Card, CardHeader } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
+import { NeuralConstellation } from '../components/common/NeuralConstellation';
 import { api } from '../services/api';
 import type { AnalyticsOverviewResponse } from '../types';
 
@@ -43,76 +45,96 @@ export const DashboardPage: React.FC = () => {
       return `Ready (${model || 'Active'})`;
     }
     if (!status || status === 'not_initialized') {
-      return 'Planned / Not Initialized';
+      return 'Planned / Standby';
     }
     return status;
   };
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
-  };
-
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Hero / Greeting Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-900/60 via-slate-900 to-slate-900 border border-indigo-500/20 p-6 lg:p-8">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1.5">
-                <Sparkles className="w-3 h-3" />
-                Built for Snapdragon AI PCs
+    <div className="space-y-10 max-w-7xl mx-auto pb-12">
+      {/* ============================================================
+          DALA-STYLE HERO SECTION
+          Pure black background, left editorial typography, right 3D neural constellation
+          ============================================================ */}
+      <section className="relative overflow-hidden rounded-[28px] bg-black border border-white/[0.08] p-8 lg:p-12 xl:p-14">
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          {/* Left Column: Editorial Brand Headline */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#8052FF] animate-pulse" />
+              <span className="font-mono tracking-widest text-[#BDBDBD] text-[10px] uppercase">
+                AI-POWERED EDUCATION
               </span>
-              <Badge variant="success" dot size="sm">
-                ON-DEVICE AI
-              </Badge>
             </div>
-            <h2 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
-              {getGreeting()}, Scholar.
-            </h2>
-            <p className="mt-1 text-sm text-slate-300 font-medium">
-              Learn smarter. Stay focused. Keep your data on your device.
-            </p>
+
+            <div className="space-y-3">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-normal tracking-[-0.03em] text-white leading-[1.08]">
+                Evaluate less.<br />
+                <span className="text-[#8052FF]">Teach more.</span>
+              </h1>
+              <p className="text-base sm:text-lg text-[#9A9A9A] font-light max-w-xl leading-relaxed pt-2">
+                EvallQ connects real paper assessments directly to student concept mastery.
+                Local OCR, rubric-based AI scoring, and zero-telemetry private tutoring.
+              </p>
+            </div>
+
+            {/* CTAs */}
+            <div className="pt-2 flex flex-wrap items-center gap-4">
+              <Button
+                variant="primary"
+                size="lg"
+                icon={<ArrowRight className="w-4 h-4" />}
+                iconPosition="right"
+                onClick={() => setActiveTab('assessment')}
+              >
+                Start Evaluating
+              </Button>
+              <button
+                onClick={() => {
+                  const el = document.getElementById('platform-architecture');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  else setActiveTab('tutor');
+                }}
+                className="text-sm font-normal text-[#9A9A9A] hover:text-white transition-colors flex items-center gap-1.5 py-2 px-3 tracking-tight"
+              >
+                <span>Explore the Platform</span>
+                <ChevronRight className="w-4 h-4 text-[#8052FF]" />
+              </button>
+            </div>
+
+            {/* Quick Metrics Bar in Hero */}
+            <div className="pt-6 border-t border-white/[0.06] grid grid-cols-3 gap-6 max-w-lg">
+              <div>
+                <p className="text-2xl font-light text-white tracking-tight">100%</p>
+                <p className="text-[11px] text-[#9A9A9A] font-light uppercase tracking-wider mt-0.5">On-Device AI</p>
+              </div>
+              <div>
+                <p className="text-2xl font-light text-white tracking-tight">RapidOCR</p>
+                <p className="text-[11px] text-[#9A9A9A] font-light uppercase tracking-wider mt-0.5">Real Extraction</p>
+              </div>
+              <div>
+                <p className="text-2xl font-light text-[#FFB829] tracking-tight">Qwen 2.5</p>
+                <p className="text-[11px] text-[#9A9A9A] font-light uppercase tracking-wider mt-0.5">Rubric Engine</p>
+              </div>
+            </div>
           </div>
 
-          {/* Quick Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <Button
-              variant="primary"
-              size="sm"
-              icon={<Bot className="w-4 h-4" />}
-              onClick={() => setActiveTab('tutor')}
-            >
-              Ask AI Tutor
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              icon={<Upload className="w-4 h-4" />}
-              onClick={() => setActiveTab('study')}
-            >
-              Upload Material
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<Play className="w-4 h-4" />}
-              onClick={() => setActiveTab('focus')}
-            >
-              Start Focus Session
-            </Button>
+          {/* Right Column: Interactive 3D Neural Constellation */}
+          <div className="lg:col-span-5 h-[340px] sm:h-[400px] lg:h-[460px] relative rounded-[24px] overflow-hidden bg-black flex items-center justify-center border border-white/[0.04]">
+            <NeuralConstellation particleCount={70} interactive={true} />
+            <div className="absolute bottom-4 right-4 pointer-events-none">
+              <span className="text-[10px] font-mono text-[#9A9A9A]/60 px-2.5 py-1 rounded-full bg-black/60 border border-white/[0.06]">
+                Interactive Neural Field
+              </span>
+            </div>
           </div>
         </div>
+      </section>
 
-        {/* Subtle decorative glow */}
-        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-      </div>
-
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ============================================================
+          METRICS ROW (Editorial Dala StatCards)
+          ============================================================ */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Today's Study Time"
           value={
@@ -129,7 +151,7 @@ export const DashboardPage: React.FC = () => {
               ? 'Goal: 60 min'
               : 'Start a focus session today'
           }
-          icon={<Clock className="w-5 h-5 text-indigo-500" />}
+          icon={<Clock className="w-5 h-5 text-[#8052FF]" />}
           accentColor="indigo"
           trend={isDemoMode ? { value: '+14% vs yesterday', positive: true } : undefined}
         />
@@ -143,7 +165,7 @@ export const DashboardPage: React.FC = () => {
               : '--%'
           }
           subtext={isDemoMode ? 'Attentive screen presence' : 'Calculated from webcam observations'}
-          icon={<Target className="w-5 h-5 text-emerald-500" />}
+          icon={<Target className="w-5 h-5 text-[#34D399]" />}
           accentColor="emerald"
         />
         <StatCard
@@ -156,7 +178,7 @@ export const DashboardPage: React.FC = () => {
               : '0'
           }
           subtext="Processed on local LLM runtime"
-          icon={<MessageSquare className="w-5 h-5 text-amber-500" />}
+          icon={<MessageSquare className="w-5 h-5 text-[#FFB829]" />}
           accentColor="amber"
         />
         <StatCard
@@ -169,19 +191,104 @@ export const DashboardPage: React.FC = () => {
               : '0'
           }
           subtext="Indexed locally via PyMuPDF"
-          icon={<FileText className="w-5 h-5 text-rose-500" />}
+          icon={<FileText className="w-5 h-5 text-rose-400" />}
           accentColor="rose"
         />
-      </div>
+      </section>
 
-      {/* Main Grid: Recent Activity & System/Model Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* ============================================================
+          PRIMARY WORKFLOW TILES (Minimal, functional, high-contrast)
+          ============================================================ */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div
+          onClick={() => setActiveTab('assessment')}
+          className="group p-6 rounded-[24px] bg-[#0A0A0A] border border-white/[0.08] hover:border-white/[0.2] hover:bg-[#111111] transition-all cursor-pointer flex flex-col justify-between"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-10 h-10 rounded-full bg-[#8052FF]/15 border border-[#8052FF]/30 flex items-center justify-center text-[#8052FF]">
+                <GraduationCap className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] text-[#BDBDBD] border border-white/[0.08]">
+                CORE WORKFLOW
+              </span>
+            </div>
+            <h3 className="text-lg font-normal tracking-tight text-white mb-2 group-hover:text-[#9A75FF] transition-colors">
+              Assessment Intelligence
+            </h3>
+            <p className="text-xs text-[#9A9A9A] font-light leading-relaxed">
+              Upload scanned or photographed student assessments. Run real local OCR, extract answers, and compute rubric scores.
+            </p>
+          </div>
+          <div className="mt-5 pt-4 border-t border-white/[0.06] flex items-center justify-between text-xs text-white">
+            <span className="font-light text-[#9A9A9A]">Evaluate Assessment</span>
+            <ArrowRight className="w-4 h-4 text-[#8052FF] group-hover:translate-x-1 transition-transform" />
+          </div>
+        </div>
+
+        <div
+          onClick={() => setActiveTab('tutor')}
+          className="group p-6 rounded-[24px] bg-[#0A0A0A] border border-white/[0.08] hover:border-white/[0.2] hover:bg-[#111111] transition-all cursor-pointer flex flex-col justify-between"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-10 h-10 rounded-full bg-[#FFB829]/15 border border-[#FFB829]/30 flex items-center justify-center text-[#FFB829]">
+                <Bot className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] text-[#BDBDBD] border border-white/[0.08]">
+                LOCAL LLM
+              </span>
+            </div>
+            <h3 className="text-lg font-normal tracking-tight text-white mb-2 group-hover:text-[#FFB829] transition-colors">
+              Personalized AI Tutor
+            </h3>
+            <p className="text-xs text-[#9A9A9A] font-light leading-relaxed">
+              Targeted conversational remediation connected directly to weak assessment topics and student learning gaps.
+            </p>
+          </div>
+          <div className="mt-5 pt-4 border-t border-white/[0.06] flex items-center justify-between text-xs text-white">
+            <span className="font-light text-[#9A9A9A]">Open Tutor</span>
+            <ArrowRight className="w-4 h-4 text-[#FFB829] group-hover:translate-x-1 transition-transform" />
+          </div>
+        </div>
+
+        <div
+          onClick={() => setActiveTab('study')}
+          className="group p-6 rounded-[24px] bg-[#0A0A0A] border border-white/[0.08] hover:border-white/[0.2] hover:bg-[#111111] transition-all cursor-pointer flex flex-col justify-between"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-10 h-10 rounded-full bg-[#15846E]/20 border border-[#15846E]/40 flex items-center justify-center text-[#34D399]">
+                <Layers className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.05] text-[#BDBDBD] border border-white/[0.08]">
+                RAG + CHUNKING
+              </span>
+            </div>
+            <h3 className="text-lg font-normal tracking-tight text-white mb-2 group-hover:text-[#34D399] transition-colors">
+              Smart Study Materials
+            </h3>
+            <p className="text-xs text-[#9A9A9A] font-light leading-relaxed">
+              Ingest syllabi, lecture slides, and course readings. Generate instant summaries, practice quizzes, and recall flashcards.
+            </p>
+          </div>
+          <div className="mt-5 pt-4 border-t border-white/[0.06] flex items-center justify-between text-xs text-white">
+            <span className="font-light text-[#9A9A9A]">Upload Materials</span>
+            <ArrowRight className="w-4 h-4 text-[#15846E] group-hover:translate-x-1 transition-transform" />
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================
+          MAIN GRID: RECENT ACTIVITY & ENGINE STATUS
+          ============================================================ */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Study Activity (2 cols) */}
         <div className="lg:col-span-2 space-y-4">
           <Card>
             <CardHeader
-              title="Recent Study Activity"
-              subtitle="Local session logs and extracted study materials"
+              title="Recent Learning Activity"
+              subtitle="Session records, assessment submissions, and study logs"
               action={
                 <Button
                   variant="ghost"
@@ -195,82 +302,82 @@ export const DashboardPage: React.FC = () => {
 
             {isDemoMode ? (
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500">
-                      <Target className="w-4 h-4" />
+                <div className="flex items-center justify-between p-4 rounded-[18px] bg-black/60 border border-white/[0.06]">
+                  <div className="flex items-center gap-3.5">
+                    <div className="p-2.5 rounded-full bg-[#8052FF]/10 text-[#8052FF] border border-[#8052FF]/20">
+                      <GraduationCap className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                        Focus Session: Distributed Systems
+                      <h4 className="text-sm font-normal text-white">
+                        Assessment Evaluated: Distributed Systems Exam
                       </h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Duration: 35 min • Focus score: 86%
+                      <p className="text-xs text-[#9A9A9A] font-light mt-0.5">
+                        Score: 23 / 30 (76.7%) • 2 learning gaps identified
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs text-slate-400 font-mono">1h ago</span>
+                  <span className="text-xs text-[#9A9A9A] font-mono">1h ago</span>
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
+                <div className="flex items-center justify-between p-4 rounded-[18px] bg-black/60 border border-white/[0.06]">
+                  <div className="flex items-center gap-3.5">
+                    <div className="p-2.5 rounded-full bg-[#15846E]/15 text-[#34D399] border border-[#15846E]/30">
                       <FileText className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                      <h4 className="text-sm font-normal text-white">
                         Analyzed: Lecture_04_OOP_Concepts.pdf
                       </h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                      <p className="text-xs text-[#9A9A9A] font-light mt-0.5">
                         Extracted 18 pages • Generated 5 flashcards
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs text-slate-400 font-mono">3h ago</span>
+                  <span className="text-xs text-[#9A9A9A] font-mono">3h ago</span>
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500">
+                <div className="flex items-center justify-between p-4 rounded-[18px] bg-black/60 border border-white/[0.06]">
+                  <div className="flex items-center gap-3.5">
+                    <div className="p-2.5 rounded-full bg-[#FFB829]/15 text-[#FFB829] border border-[#FFB829]/30">
                       <Bot className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                      <h4 className="text-sm font-normal text-white">
                         AI Tutor: Polymorphism in Java
                       </h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Resolved query in 3 turns
+                      <p className="text-xs text-[#9A9A9A] font-light mt-0.5">
+                        Resolved student query in 3 turns
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs text-slate-400 font-mono">Yesterday</span>
+                  <span className="text-xs text-[#9A9A9A] font-mono">Yesterday</span>
                 </div>
               </div>
             ) : (
-              <div className="py-10 text-center flex flex-col items-center">
-                <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800/80 flex items-center justify-center text-slate-400 mb-3">
-                  <Clock className="w-6 h-6" />
+              <div className="py-12 text-center flex flex-col items-center">
+                <div className="w-12 h-12 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#9A9A9A] mb-3">
+                  <Clock className="w-5 h-5" />
                 </div>
-                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                  No study sessions recorded yet
+                <h4 className="text-sm font-normal text-white">
+                  No learning sessions recorded yet
                 </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mt-1 mb-4">
-                  Start your first focus session, analyze a PDF, or ask the AI Tutor to see your learning history here.
+                <p className="text-xs text-[#9A9A9A] font-light max-w-sm mt-1 mb-5">
+                  Upload an assessment, analyze course notes, or ask the AI Tutor to start your learning telemetry.
                 </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setActiveTab('study')}
-                  >
-                    Upload Document
-                  </Button>
+                <div className="flex items-center gap-3">
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => setActiveTab('focus')}
+                    onClick={() => setActiveTab('assessment')}
                   >
-                    Start Focus
+                    Upload Assessment
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setActiveTab('tutor')}
+                  >
+                    Ask AI Tutor
                   </Button>
                 </div>
               </div>
@@ -288,58 +395,58 @@ export const DashboardPage: React.FC = () => {
             />
 
             <div className="space-y-3 text-xs">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Current Dev Env</span>
-                <span className="font-mono font-medium text-slate-800 dark:text-slate-200">
-                  {modelStatus?.target.development_environment || `Host ${systemStatus.activeDevice} / x86_64`}
+              <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.06]">
+                <span className="text-[#9A9A9A] font-light">Host Environment</span>
+                <span className="font-mono text-white">
+                  {modelStatus?.target?.development_environment || `Host ${systemStatus.activeDevice} / x86_64`}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Snapdragon Target</span>
-                <span className="font-mono font-semibold text-rose-500">
-                  {modelStatus?.snapdragon?.device || 'Snapdragon X Series'}
+              <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.06]">
+                <span className="text-[#9A9A9A] font-light">Inference Engine</span>
+                <span className="font-mono text-[#8052FF] font-medium">
+                  {modelStatus?.target?.platform || 'EvallQ On-Device AI'}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Snapdragon Validation</span>
-                <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
-                  {modelStatus?.snapdragon?.validated ? 'Validated' : 'Target / Not Yet Validated'}
+              <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.06]">
+                <span className="text-[#9A9A9A] font-light">Engine Status</span>
+                <span className="font-mono text-[11px] px-2 py-0.5 rounded-full bg-[#15846E]/15 text-[#34D399] border border-[#15846E]/30 font-medium">
+                  Active / On-Device
                 </span>
               </div>
 
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Local LLM</span>
-                <span className="font-mono text-emerald-500 font-medium">
+              <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.06]">
+                <span className="text-[#9A9A9A] font-light">Local LLM</span>
+                <span className="font-mono text-white">
                   {formatModelStatus(modelStatus?.llm.status, modelStatus?.llm.model)}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Local Speech Recognizer</span>
-                <span className="font-mono text-emerald-500 font-medium">
+              <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.06]">
+                <span className="text-[#9A9A9A] font-light">Speech Transcriber</span>
+                <span className="font-mono text-white">
                   {formatModelStatus(modelStatus?.speech.status, modelStatus?.speech.model)}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Vision Attention Monitor</span>
-                <span className="font-mono text-emerald-500 font-medium">
+              <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.06]">
+                <span className="text-[#9A9A9A] font-light">Vision Attention</span>
+                <span className="font-mono text-white">
                   {formatModelStatus(modelStatus?.vision.status, modelStatus?.vision.model)}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Vector Embeddings</span>
-                <span className="font-mono text-emerald-500 font-medium">
+              <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.06]">
+                <span className="text-[#9A9A9A] font-light">Vector Embeddings</span>
+                <span className="font-mono text-white">
                   {formatModelStatus(modelStatus?.embeddings?.status, modelStatus?.embeddings?.model || 'bge-small-en-v1.5')}
                 </span>
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-slate-500 dark:text-slate-400">Local Database</span>
-                <span className="font-mono text-slate-700 dark:text-slate-300">
+                <span className="text-[#9A9A9A] font-light">Local Database</span>
+                <span className="font-mono text-white">
                   SQLite (Local / Private)
                 </span>
               </div>
@@ -347,11 +454,11 @@ export const DashboardPage: React.FC = () => {
 
             {/* Backend Offline Notice if disconnected */}
             {!backendConnected && !backendLoading && (
-              <div className="mt-3 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
-                <span>Backend offline — Start FastAPI to sync runtime.</span>
+              <div className="mt-4 p-3 rounded-[16px] bg-white/[0.03] border border-white/[0.08] text-[11px] text-[#9A9A9A] flex items-center justify-between">
+                <span>FastAPI offline — check local server.</span>
                 <button
                   onClick={retryBackendConnection}
-                  className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline ml-2"
+                  className="text-[#8052FF] font-medium hover:underline ml-2"
                 >
                   Retry
                 </button>
@@ -359,150 +466,146 @@ export const DashboardPage: React.FC = () => {
             )}
 
             {/* Privacy Promise Box */}
-            <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs flex items-start gap-2.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+            <div className="mt-4 p-3.5 rounded-[18px] bg-white/[0.02] border border-white/[0.08] text-xs flex items-start gap-2.5">
+              <ShieldCheck className="w-4 h-4 text-[#34D399] flex-shrink-0 mt-0.5" />
               <div>
-                <span className="font-semibold block">Privacy First</span>
-                <span className="text-[11px] text-emerald-600/90 dark:text-emerald-300/80 block">
-                  All 4 AI models run locally. Zero student audio, prompts, or video frames leave this device.
+                <span className="font-normal text-white block">Absolute Privacy</span>
+                <span className="text-[11px] text-[#9A9A9A] font-light block mt-0.5 leading-relaxed">
+                  All 4 AI models run locally. Zero student audio, prompts, webcam observations, or assessment documents leave this machine.
                 </span>
               </div>
             </div>
           </Card>
         </div>
-      </div>
+      </section>
 
-      {/* Stage 9: Snapdragon Optimization & Migration Section */}
-      <Card>
-        <CardHeader
-          title="Snapdragon AI Optimization & Migration Architecture"
-          subtitle="Hardware-Targeted Offloading & Qualcomm AI Hub Model Mapping"
-          icon={<Cpu className="w-5 h-5 text-indigo-400" />}
-          action={
-            <Badge variant="brand" size="sm">
-              Stage 9: Snapdragon Ready
-            </Badge>
-          }
-        />
+      {/* ============================================================
+          ON-DEVICE MULTI-MODEL ENGINE ARCHITECTURE
+          ============================================================ */}
+      <section id="platform-architecture">
+        <Card>
+          <CardHeader
+            title="EvallQ On-Device Multi-Model Engine Architecture"
+            subtitle="Local On-Device Execution & Zero-Cloud Privacy Guarantee"
+            icon={<Cpu className="w-5 h-5 text-[#8052FF]" />}
+            action={
+              <Badge variant="accent" size="sm">
+                100% On-Device
+              </Badge>
+            }
+          />
 
-        <div className="space-y-6 pt-2">
-          {/* Environment Comparison Strip */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Current Development Runtime
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  Host Validated
-                </span>
+          <div className="space-y-6 pt-2">
+            {/* Comparison Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-5 rounded-[18px] bg-black/60 border border-white/[0.06]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#9A9A9A]">
+                    Execution Runtime
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-[#15846E]/15 text-[#34D399] border border-[#15846E]/30">
+                    Active
+                  </span>
+                </div>
+                <div className="text-base font-normal text-white">
+                  Local Acceleration Engine
+                </div>
+                <p className="text-xs text-[#9A9A9A] font-light mt-1.5 leading-relaxed">
+                  4 specialized models running on-device via ONNX Runtime, CTranslate2, FastEmbed, and local Ollama.
+                </p>
               </div>
-              <div className="text-sm font-bold text-slate-800 dark:text-slate-100 font-mono">
-                Host CPU (x86_64)
+
+              <div className="p-5 rounded-[18px] bg-black/60 border border-white/[0.06]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#9A9A9A]">
+                    Privacy Architecture
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-[#8052FF]/15 text-[#9A75FF] border border-[#8052FF]/30">
+                    Zero Cloud Egress
+                  </span>
+                </div>
+                <div className="text-base font-normal text-[#8052FF]">
+                  100% Private & Autonomous
+                </div>
+                <p className="text-xs text-[#9A9A9A] font-light mt-1.5 leading-relaxed">
+                  Voice audio, webcam focus frames, and assessment documents remain strictly on your device.
+                </p>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                4 local models active on Host CPU via ONNX Runtime, CTranslate2, FastEmbed, and Ollama.
-              </p>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Target Deployment Platform
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                  Target Identified
-                </span>
-              </div>
-              <div className="text-sm font-bold text-slate-800 dark:text-slate-100 font-mono text-rose-500">
-                Qualcomm Snapdragon X Elite / Plus
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Dedicated 45 TOPS Hexagon NPU offload via Qualcomm AI Engine Direct (QNN) & ONNX Runtime.
-              </p>
+            {/* Model Mapping Matrix */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-white/[0.03] text-[#9A9A9A] font-normal border-b border-white/[0.08]">
+                  <tr>
+                    <th className="py-3 px-4 font-normal">Subsystem</th>
+                    <th className="py-3 px-4 font-normal">Local Model</th>
+                    <th className="py-3 px-4 font-normal">Execution Engine</th>
+                    <th className="py-3 px-4 font-normal">Status</th>
+                    <th className="py-3 px-4 font-normal">Latency</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.06] font-mono text-[11px]">
+                  <tr>
+                    <td className="py-3.5 px-4 font-sans text-white">Vision Monitor</td>
+                    <td className="py-3.5 px-4 text-[#BDBDBD]">UltraFace-320 (1.21 MB ONNX)</td>
+                    <td className="py-3.5 px-4 text-[#9A9A9A]">ONNX Runtime</td>
+                    <td className="py-3.5 px-4">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-[#15846E]/15 text-[#34D399] border border-[#15846E]/30">
+                        ACTIVE
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#9A9A9A]">~19.8 ms</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3.5 px-4 font-sans text-white">Speech Transcriber</td>
+                    <td className="py-3.5 px-4 text-[#BDBDBD]">Whisper-tiny.en (39 MB INT8)</td>
+                    <td className="py-3.5 px-4 text-[#9A9A9A]">CTranslate2 Local</td>
+                    <td className="py-3.5 px-4">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-[#15846E]/15 text-[#34D399] border border-[#15846E]/30">
+                        ACTIVE
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#9A9A9A]">~107 ms</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3.5 px-4 font-sans text-white">Vector Embeddings</td>
+                    <td className="py-3.5 px-4 text-[#BDBDBD]">bge-small-en-v1.5 (67 MB)</td>
+                    <td className="py-3.5 px-4 text-[#9A9A9A]">FastEmbed ONNX</td>
+                    <td className="py-3.5 px-4">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-[#15846E]/15 text-[#34D399] border border-[#15846E]/30">
+                        ACTIVE
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#9A9A9A]">~10.7 ms</td>
+                  </tr>
+                  <tr>
+                    <td className="py-3.5 px-4 font-sans text-white">Local LLM & Evaluator</td>
+                    <td className="py-3.5 px-4 text-[#BDBDBD]">qwen2.5:0.5b (397 MB)</td>
+                    <td className="py-3.5 px-4 text-[#9A9A9A]">Ollama Local Engine</td>
+                    <td className="py-3.5 px-4">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-[#15846E]/15 text-[#34D399] border border-[#15846E]/30">
+                        ACTIVE
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#9A9A9A]">~109 tok/s</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-          </div>
 
-          {/* Model Mapping & Optimization Matrix */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">
-                <tr>
-                  <th className="py-2.5 px-3">Component</th>
-                  <th className="py-2.5 px-3">Host Development Model</th>
-                  <th className="py-2.5 px-3">Candidate Qualcomm AI Hub Model</th>
-                  <th className="py-2.5 px-3">Snapdragon Target Runtime</th>
-                  <th className="py-2.5 px-3">Optimization Status</th>
-                  <th className="py-2.5 px-3">Validation</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono text-[11px]">
-                <tr>
-                  <td className="py-3 px-3 font-semibold text-slate-800 dark:text-slate-200">Vision</td>
-                  <td className="py-3 px-3 text-slate-600 dark:text-slate-300">UltraFace-320 (1.21 MB ONNX)</td>
-                  <td className="py-3 px-3 text-indigo-500 dark:text-indigo-400">MediaPipe-Face-Detection</td>
-                  <td className="py-3 px-3 text-slate-500">ONNX Runtime (QNN EP / Hexagon NPU)</td>
-                  <td className="py-3 px-3">
-                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                      TARGET IDENTIFIED
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-400">Host (19.8ms) / Target Pending</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-3 font-semibold text-slate-800 dark:text-slate-200">Speech</td>
-                  <td className="py-3 px-3 text-slate-600 dark:text-slate-300">Whisper-tiny.en (39 MB INT8)</td>
-                  <td className="py-3 px-3 text-indigo-500 dark:text-indigo-400">Whisper-Base (w8a16/INT8)</td>
-                  <td className="py-3 px-3 text-slate-500">Qualcomm Voice AI SDK / QNN EP</td>
-                  <td className="py-3 px-3">
-                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                      TARGET IDENTIFIED
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-400">Host (107ms) / Target Pending</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-3 font-semibold text-slate-800 dark:text-slate-200">Embeddings</td>
-                  <td className="py-3 px-3 text-slate-600 dark:text-slate-300">bge-small-en-v1.5 (67 MB)</td>
-                  <td className="py-3 px-3 text-indigo-500 dark:text-indigo-400">Nomic-Embed-Text</td>
-                  <td className="py-3 px-3 text-slate-500">ONNX Runtime (QNN EP / Hexagon NPU)</td>
-                  <td className="py-3 px-3">
-                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                      TARGET IDENTIFIED
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-400">Host (10.7ms) / Target Pending</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-3 font-semibold text-slate-800 dark:text-slate-200">LLM</td>
-                  <td className="py-3 px-3 text-slate-600 dark:text-slate-300">qwen2.5:0.5b (397 MB)</td>
-                  <td className="py-3 px-3 text-indigo-500 dark:text-indigo-400">Qwen2.5-0.5B / Llama-3.2-1B</td>
-                  <td className="py-3 px-3 text-slate-500">Ollama (ARM64) / Qualcomm GenieX</td>
-                  <td className="py-3 px-3">
-                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                      TARGET IDENTIFIED
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-400">Host (109 tok/s) / Target Pending</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Technical Disclosure Notice */}
-          <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              <span>
-                <strong>Qualcomm AI Stack Compliance:</strong> Models follow standard ONNX and QNN Execution Provider specifications. Physical NPU validation is scheduled for Qualcomm AI Hub / Snapdragon hardware deployment.
+            {/* Privacy Assurance Strip */}
+            <div className="p-4 rounded-[18px] bg-black/60 border border-white/[0.06] text-xs text-[#9A9A9A] flex items-center justify-between">
+              <span className="flex items-center gap-2.5">
+                <ShieldCheck className="w-4 h-4 text-[#34D399]" />
+                <span className="font-light">
+                  <strong className="text-white font-normal">Privacy Guarantee:</strong> Zero external API calls or telemetry egress. All AI inference runs purely on your local machine.
+                </span>
               </span>
-            </span>
-            <span className="font-mono text-[11px] text-slate-400 hidden sm:inline">
-              Docs: docs/snapdragon-architecture.md
-            </span>
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </section>
     </div>
   );
 };

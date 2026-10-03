@@ -12,5 +12,5 @@ async def get_health() -> HealthResponse:
     """
     return HealthResponse(
         status="healthy",
-        service="focusflow-backend"
+        service="evallq-backend"
     )

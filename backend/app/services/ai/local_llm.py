@@ -5,8 +5,8 @@ from ...core.config import settings
 from .base import LocalLLMProvider, ModelNotInitializedError
 
 
-FOCUSFLOW_TUTOR_SYSTEM_PROMPT = (
-    "You are FocusFlow AI Tutor, a private on-device academic study companion for students.\n"
+EVALLQ_TUTOR_SYSTEM_PROMPT = (
+    "You are EvallQ AI Tutor, a private on-device academic study companion for students.\n"
     "Your mission is to help students learn effectively through clear explanations, intuition-building, and practical examples.\n\n"
     "Core Guidelines:\n"
     "1. Be concise, encouraging, and pedagogically sound.\n"
@@ -74,7 +74,7 @@ class DevelopmentLLMProvider(LocalLLMProvider):
             "runtime": "Ollama Local Engine",
             "endpoint": self.base_url,
             "offline": True,
-            "target_upgrade": "Snapdragon Copilot+ PC (Hexagon NPU via QNN)"
+            "target_upgrade": "On-Device Acceleration Engine"
         }
 
     async def generate_chat(
@@ -88,7 +88,7 @@ class DevelopmentLLMProvider(LocalLLMProvider):
         Executes real local inference via Ollama /api/chat.
         """
         # Format conversation messages
-        full_system = system_prompt or FOCUSFLOW_TUTOR_SYSTEM_PROMPT
+        full_system = system_prompt or EVALLQ_TUTOR_SYSTEM_PROMPT
         payload_messages = [{"role": "system", "content": full_system}]
 
         for msg in messages:
@@ -176,32 +176,29 @@ class DevelopmentLLMProvider(LocalLLMProvider):
             yield ""
 
 
-class SnapdragonLLMProvider(LocalLLMProvider):
+class OnDeviceLLMProvider(LocalLLMProvider):
     """
-    Production target provider for Qualcomm Snapdragon Copilot+ PCs.
-    Utilizes Qualcomm AI Hub models (Llama-3.2-3B INT4) running on the 45 TOPS Hexagon NPU.
-    Acts as an explicit standby architecture in host x86_64 development.
+    On-device LLM provider configuration for local acceleration.
     """
 
     def __init__(self):
-        self.model_name = "Llama-3.2-3B-Instruct (Qualcomm AI Hub INT4)"
-        self.device = "Qualcomm Hexagon NPU (45 TOPS)"
-        self.target_platform = "Snapdragon Copilot+ PC (ARM64)"
+        self.model_name = "Qwen2.5-0.5B-Instruct"
+        self.device = "Local AI Engine"
+        self.target_platform = "On-Device Engine"
 
     def is_initialized(self) -> bool:
-        # Not initialized on host x86_64 CPU
         return False
 
     def get_status(self) -> Dict[str, Any]:
         return {
-            "status": "standby_target",
-            "provider": "Qualcomm Snapdragon NPU",
+            "status": "standby",
+            "provider": "Local Engine",
             "model": self.model_name,
             "device": self.device,
             "target_platform": self.target_platform,
-            "runtime": "QNN Execution Provider / ONNX Runtime",
+            "runtime": "ONNX Runtime / Ollama",
             "offline": True,
-            "message": "Target hardware deployment for Snapdragon X-series NPU."
+            "message": "Local on-device execution standby."
         }
 
     async def generate_chat(
@@ -210,23 +207,20 @@ class SnapdragonLLMProvider(LocalLLMProvider):
         system_prompt: Optional[str] = None,
         max_tokens: int = 512,
     ) -> Dict[str, Any]:
-        raise ModelNotInitializedError(
-            "Snapdragon NPU acceleration is target architecture for Snapdragon Copilot+ PCs. "
-            "Use the development provider on host x86_64 CPU."
-        )
+        raise ModelNotInitializedError("On-device engine standby. Use the active local provider.")
 
     async def generate(self, prompt: str, system_prompt: Optional[str] = None, max_tokens: int = 512) -> str:
-        raise ModelNotInitializedError("Snapdragon NPU provider is not active on host CPU.")
+        raise ModelNotInitializedError("On-device engine standby.")
 
     async def stream(self, prompt: str, system_prompt: Optional[str] = None) -> AsyncGenerator[str, None]:
-        raise ModelNotInitializedError("Snapdragon NPU provider is not active on host CPU.")
+        raise ModelNotInitializedError("On-device engine standby.")
         if False:
             yield ""
 
 
 # Primary service instance
 development_llm_provider = DevelopmentLLMProvider()
-snapdragon_llm_provider = SnapdragonLLMProvider()
+on_device_llm_provider = OnDeviceLLMProvider()
 
 # Backwards compatibility aliases
 LocalLLMService = DevelopmentLLMProvider
@@ -234,6 +228,4 @@ local_llm_service = development_llm_provider
 
 
 def get_active_llm_provider() -> LocalLLMProvider:
-    if settings.LLM_PROVIDER.lower() == "snapdragon":
-        return snapdragon_llm_provider
     return development_llm_provider

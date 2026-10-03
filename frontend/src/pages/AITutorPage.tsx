@@ -21,7 +21,7 @@ import { api } from '../services/api';
 import type { ChatMessage, ApiChatMessage } from '../types';
 
 export const AITutorPage: React.FC = () => {
-  const { isDemoMode, aiStatus, modelStatus } = useApp();
+  const { isDemoMode, aiStatus, modelStatus, tutorInitialPrompt, setTutorInitialPrompt } = useApp();
   const [input, setInput] = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingSeconds, setThinkingSeconds] = useState(0);
@@ -50,7 +50,7 @@ export const AITutorPage: React.FC = () => {
         {
           id: 'demo-2',
           sender: 'assistant',
-          text: 'Polymorphism in Java is a core Object-Oriented Programming (OOP) concept that allows objects of different classes to be treated as objects of a common superclass. The word itself means "many forms".\n\nThere are two primary types:\n1. **Compile-time Polymorphism (Method Overloading)**: Multiple methods with the same name but different signatures within the same class.\n2. **Runtime Polymorphism (Method Overriding)**: A subclass provides a specific implementation of a method declared in its superclass, resolved dynamically via virtual method tables.\n\n*Note: In live mode, responses are generated directly on your local machine using the on-device Qwen 2.5 LLM (Snapdragon Hexagon NPU target).*',
+          text: 'Polymorphism in Java is a core Object-Oriented Programming (OOP) concept that allows objects of different classes to be treated as objects of a common superclass. The word itself means "many forms".\n\nThere are two primary types:\n1. **Compile-time Polymorphism (Method Overloading)**: Multiple methods with the same name but different signatures within the same class.\n2. **Runtime Polymorphism (Method Overriding)**: A subclass provides a specific implementation of a method declared in its superclass, resolved dynamically via virtual method tables.\n\n*Note: In live mode, responses are generated directly on your local machine using the on-device Qwen 2.5 LLM (Private On-Device Engine).*',
           timestamp: '10:31 AM',
           tokensPerSec: 28.4,
           latencyMs: 140,
@@ -71,6 +71,55 @@ export const AITutorPage: React.FC = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isThinking]);
+
+  // Handle incoming Learning Gap transition prompt from Assessment Intelligence
+  useEffect(() => {
+    if (tutorInitialPrompt && tutorInitialPrompt.trim()) {
+      const promptText = tutorInitialPrompt;
+      setTutorInitialPrompt(null);
+
+      const userMsg: ChatMessage = {
+        id: `usr-${Date.now()}`,
+        sender: 'user',
+        text: promptText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages(prev => [...prev, userMsg]);
+      setIsThinking(true);
+
+      api.sendChatMessage({
+        message: promptText,
+        conversation: messages.filter(m => m.sender === 'user' || m.sender === 'assistant').map(m => ({
+          role: m.sender === 'user' ? 'user' : 'assistant',
+          content: m.text,
+        })),
+      })
+      .then(res => {
+        const assistantMsg: ChatMessage = {
+          id: `ast-${Date.now()}`,
+          sender: 'assistant',
+          text: res.reply,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          tokensPerSec: res.tokens_per_second,
+          latencyMs: res.latency_ms,
+        };
+        setMessages(prev => [...prev, assistantMsg]);
+      })
+      .catch((err: unknown) => {
+        const errMsg = err instanceof Error ? err.message : 'Local inference error occurred.';
+        const errorMsg: ChatMessage = {
+          id: `err-${Date.now()}`,
+          sender: 'assistant',
+          text: `⚠️ **Inference Unavailable**: ${errMsg}\n\n*Ensure the local LLM runtime (Ollama) is active.*`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        setMessages(prev => [...prev, errorMsg]);
+      })
+      .finally(() => {
+        setIsThinking(false);
+      });
+    }
+  }, [tutorInitialPrompt]);
 
   // Stopwatch during LLM inference
   useEffect(() => {
@@ -509,15 +558,15 @@ export const AITutorPage: React.FC = () => {
           <button
             onClick={handleSend}
             disabled={!input.trim() || isThinking || isRecording}
-            className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm shadow-indigo-600/30"
+            className="p-2.5 rounded-full bg-[#8052FF] hover:bg-[#6E3EF0] text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm shadow-[#8052FF]/30"
             title="Send query"
           >
             <Send className="w-4 h-4" />
           </button>
         </div>
 
-        <p className="mt-2 text-center text-[10px] text-slate-400">
-          FocusFlow AI operates 100% locally on-device. Zero audio or student prompts are sent to cloud services.
+        <p className="mt-2 text-center text-[10px] text-[#9A9A9A]">
+          EvallQ operates 100% locally on-device. Zero audio or student prompts are sent to cloud services.
         </p>
       </div>
     </div>

@@ -597,7 +597,7 @@ export const StudyMaterialsPage: React.FC = () => {
                   <Badge variant="brand" size="sm">
                     Qwen 2.5 (0.5B)
                   </Badge>
-                  <span>Synthesized on Host CPU (Dev) • Standby: Snapdragon Hexagon NPU</span>
+                  <span>Synthesized via On-Device Local LLM Engine</span>
                 </div>
                 <Button
                   variant="outline"

@@ -15,20 +15,20 @@ with TestClient(app) as client:
     print("FOCUSFLOW AI -- COMPREHENSIVE 11-SUBSYSTEM TEST")
     print("==================================================")
 
-    # 1. Model Status & Truthful Reporting
-    print("\n[1/11] Subsystem 1: Model Status & Snapdragon Truthful Reporting")
+    # 1. Model Status & On-Device Engine Truthful Reporting
+    print("\n[1/11] Subsystem 1: Model Status & On-Device Engine Truthful Reporting")
     res = client.get("/api/model/status")
     assert res.status_code == 200, f"Model status failed: {res.text}"
     status_data = res.json()
-    assert status_data["runtime"]["environment"] == "host"
-    assert status_data["snapdragon"]["device"] == "Snapdragon X Series"
-    assert status_data["snapdragon"]["validated"] is False
-    assert status_data["snapdragon"]["qnn_available"] is False
-    assert status_data["snapdragon"]["optimization_status"] == "TARGET IDENTIFIED"
+    assert status_data["runtime"]["environment"] == "local"
+    assert status_data["engine"]["device"] == "Local AI Engine"
+    assert status_data["engine"]["validated"] is True
+    assert status_data["engine"]["acceleration_available"] is True
+    assert status_data["engine"]["optimization_status"] == "ON-DEVICE ACTIVE"
     assert status_data["embeddings"]["status"] == "ready"
     assert status_data["speech"]["status"] == "ready"
     assert status_data["vision"]["status"] == "ready"
-    print("  [PASS] Model status verified truthfully. Target: Snapdragon X Series, Validated: False.")
+    print("  [PASS] Model status verified truthfully. Engine: Local AI Engine, Validated: True.")
 
     # 2. Speech Transcription (Whisper-tiny.en INT8)
     print("\n[2/11] Subsystem 2: Speech Transcription (Whisper-tiny.en INT8)")

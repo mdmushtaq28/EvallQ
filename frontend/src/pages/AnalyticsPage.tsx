@@ -121,21 +121,21 @@ export const AnalyticsPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-[24px] bg-[#0A0A0A] border border-white/[0.08]">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1.5">
             <Badge variant="brand" size="sm">
               Study Telemetry
             </Badge>
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 font-mono">
-              <Database className="w-3.5 h-3.5 text-indigo-400" />
-              <span>SQLite: focusflow.db (Local)</span>
+            <div className="flex items-center gap-1.5 text-xs text-[#9A9A9A] font-mono">
+              <Database className="w-3.5 h-3.5 text-[#8052FF]" />
+              <span>SQLite: Local Database (Private)</span>
             </div>
           </div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          <h2 className="text-xl font-normal tracking-tight text-white">
             Performance & Attention Analytics
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-[#9A9A9A] font-light mt-0.5">
             Computed strictly on-device from your study sessions and local AI interactions.
           </p>
         </div>

@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    APP_NAME: str = "FocusFlow AI API"
+    APP_NAME: str = "EvallQ API"
     APP_VERSION: str = "0.1.0"
     HOST: str = "127.0.0.1"
     PORT: int = 8000
@@ -17,20 +17,22 @@ class Settings(BaseSettings):
     ]
 
     # Target Hardware and Runtime Metadata
-    TARGET_PLATFORM: str = "Snapdragon AI PC"
-    DEV_ENVIRONMENT: str = "Host CPU / x86_64"
-    AI_TARGET: str = "host"  # "host" (Host CPU / x86_64) or "snapdragon" (Snapdragon X Series NPU)
-    SNAPDRAGON_DEVICE: str = "Snapdragon X Series"
-    SNAPDRAGON_NPU_RUNTIME: str = "QNN / ONNX Runtime"
-    SNAPDRAGON_VALIDATED: bool = False
+    TARGET_PLATFORM: str = "EvallQ On-Device AI"
+    DEV_ENVIRONMENT: str = "Local Engine"
+    AI_TARGET: str = "local"
+    ON_DEVICE_DEVICE: str = "Local AI Engine"
+    ON_DEVICE_RUNTIME: str = "ONNX Runtime / Local Ollama"
+    ON_DEVICE_VALIDATED: bool = True
+
+
 
     # Local LLM Inference Configuration
-    LLM_PROVIDER: str = "development"
+    LLM_PROVIDER: str = "local"
     LLM_MODEL: str = "qwen2.5:0.5b"
     LLM_BASE_URL: str = "http://127.0.0.1:11434"
     LLM_TIMEOUT_SECONDS: float = 60.0
-    LLM_DEV_DEVICE: str = "Host CPU (x86_64)"
-    LLM_TARGET_DEVICE: str = "Qualcomm Hexagon NPU (Snapdragon)"
+    LLM_DEV_DEVICE: str = "Local Engine"
+    LLM_TARGET_DEVICE: str = "Local AI Engine"
 
     model_config = SettingsConfigDict(
         env_file=".env",

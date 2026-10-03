@@ -49,6 +49,6 @@ async def download_export(db: Session = Depends(get_db)):
         content=json_bytes,
         media_type="application/json",
         headers={
-            "Content-Disposition": "attachment; filename=focusflow_study_export.json"
+            "Content-Disposition": "attachment; filename=evallq_study_export.json"
         }
     )

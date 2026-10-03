@@ -32,6 +32,23 @@ def get_db() -> Generator[Session, None, None]:
 def init_db() -> None:
     """
     Initializes database tables defined on SQLAlchemy Base metadata.
+    Also executes lightweight migrations for SQLite if columns are missing.
     """
     import app.models  # noqa: F401 - ensure models are registered
     Base.metadata.create_all(bind=engine)
+
+    # Lightweight migration check for SQLite
+    try:
+        with engine.connect() as conn:
+            # Check assessment_submissions columns
+            result = conn.exec_driver_sql("PRAGMA table_info(assessment_submissions);")
+            existing_cols = {row[1] for row in result.fetchall()}
+            if "assignment_id" not in existing_cols:
+                conn.exec_driver_sql("ALTER TABLE assessment_submissions ADD COLUMN assignment_id VARCHAR(36);")
+            if "student_name" not in existing_cols:
+                conn.exec_driver_sql("ALTER TABLE assessment_submissions ADD COLUMN student_name VARCHAR(100) DEFAULT 'Student';")
+            if "teacher_feedback" not in existing_cols:
+                conn.exec_driver_sql("ALTER TABLE assessment_submissions ADD COLUMN teacher_feedback TEXT;")
+            conn.commit()
+    except Exception as e:
+        print(f"Database schema synchronization notice: {e}")

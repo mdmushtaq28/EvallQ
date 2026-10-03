@@ -3,9 +3,9 @@ from .local_llm import (
     LocalLLMService,
     local_llm_service,
     DevelopmentLLMProvider,
-    SnapdragonLLMProvider,
+    OnDeviceLLMProvider,
     development_llm_provider,
-    snapdragon_llm_provider,
+    on_device_llm_provider,
     get_active_llm_provider,
 )
 from .speech import SpeechService, speech_service
@@ -20,9 +20,9 @@ __all__ = [
     "LocalLLMService",
     "local_llm_service",
     "DevelopmentLLMProvider",
-    "SnapdragonLLMProvider",
+    "OnDeviceLLMProvider",
     "development_llm_provider",
-    "snapdragon_llm_provider",
+    "on_device_llm_provider",
     "get_active_llm_provider",
     "SpeechService",
     "speech_service",

@@ -312,7 +312,7 @@ export const FocusModePage: React.FC = () => {
         <div className="flex items-center gap-2">
           {!isActive ? (
             <Button
-              variant="snapdragon"
+              variant="accent"
               icon={<Play className="w-4 h-4 fill-white" />}
               onClick={handleStartSession}
             >
@@ -432,13 +432,13 @@ export const FocusModePage: React.FC = () => {
           </Card>
 
           {/* Scientific Disclaimer Card */}
-          <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-1.5">
-            <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-semibold">
-              <Cpu className="w-4 h-4 text-indigo-400" />
+          <div className="p-4 rounded-[20px] bg-[#0A0A0A] border border-white/[0.08] text-xs text-[#9A9A9A] space-y-1.5">
+            <div className="flex items-center gap-2 text-white font-normal">
+              <Cpu className="w-4 h-4 text-[#8052FF]" />
               <span>Observable Physical Presence Tracking</span>
             </div>
-            <p className="leading-relaxed">
-              FocusFlow AI measures only <strong>observable physical signals</strong> (face detected vs not detected, approximate screen alignment) using local ONNX computer vision. The system does not attempt to detect concentration, emotion, fatigue, or psychological states. All calculations use actual observed presence intervals.
+            <p className="leading-relaxed font-light">
+              EvallQ measures only <strong>observable physical signals</strong> (face detected vs not detected, approximate screen alignment) using local ONNX computer vision. The system does not attempt to detect concentration, emotion, fatigue, or psychological states. All calculations use actual observed presence intervals.
             </p>
           </div>
         </div>

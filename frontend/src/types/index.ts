@@ -1,10 +1,24 @@
 export * from './api';
+export * from './assessment';
 
-export type TabType = 'dashboard' | 'tutor' | 'study' | 'focus' | 'analytics' | 'settings';
+export type UserRole = 'student' | 'teacher';
+
+export type TabType =
+  | 'dashboard'
+  | 'tutor'
+  | 'study'
+  | 'focus'
+  | 'analytics'
+  | 'settings'
+  | 'assessment'
+  | 'teacher-dashboard'
+  | 'teacher-assignments'
+  | 'teacher-review'
+  | 'teacher-analytics';
 
 export type AIModelStatus = 'LOCAL_AI' | 'OFFLINE_MODE' | 'NOT_INSTALLED' | 'DEMO_MODE';
 
-export type InferenceDevice = 'AUTO' | 'CPU' | 'GPU' | 'NPU';
+export type InferenceDevice = 'AUTO' | 'CPU' | 'GPU' | 'ENGINE';
 
 export interface ChatMessage {
   id: string;
@@ -77,10 +91,71 @@ export interface SystemModelStatus {
   llmStatus: 'ready' | 'downloading' | 'not_installed';
   speechStatus: 'ready' | 'downloading' | 'not_installed';
   visionStatus: 'ready' | 'downloading' | 'not_installed';
-  activeDevice: 'CPU' | 'GPU' | 'NPU';
-  deviceTarget: 'Snapdragon X Elite / X Plus / Snapdragon X2' | 'Host CPU (Dev Environment)';
-  isSnapdragonDetected: boolean;
-  npuAvailable: boolean;
+  activeDevice: 'CPU' | 'GPU' | 'Engine' | string;
+  deviceTarget: string;
+  isEngineActive?: boolean;
   quantization: string;
   memoryUsageMb: number;
+}
+
+export interface AssignmentItem {
+  id: string;
+  title: string;
+  subject: string;
+  instructions?: string;
+  total_maximum_marks: number;
+  rubric_guidance?: string;
+  expected_concepts: string[];
+  questions: Array<{
+    question_number: number;
+    question_text: string;
+    maximum_marks: number;
+    topic: string;
+    rubric?: string;
+  }>;
+  status: string;
+  created_at: string;
+  submission_count: number;
+  pending_review_count: number;
+  average_score?: number | null;
+}
+
+export interface TeacherReviewQueueItem {
+  id: string;
+  student_name: string;
+  assignment_id?: string | null;
+  assignment_title: string;
+  ai_suggested_score: number;
+  teacher_score?: number | null;
+  final_score?: number | null;
+  total_maximum_marks: number;
+  approval_status: 'pending' | 'approved' | 'modified';
+  submitted_at: string;
+  page_count: number;
+  file_type: string;
+  original_filename: string;
+}
+
+export interface TeacherDashboardStats {
+  total_assignments: number;
+  pending_reviews: number;
+  completed_reviews: number;
+  average_class_score: number;
+  students_requiring_attention: number;
+  strongest_topic?: string | null;
+  weakest_topic?: string | null;
+  topic_analytics: Array<{
+    topic: string;
+    average_percentage: number;
+    question_count: number;
+  }>;
+  students_needing_support: Array<{
+    submission_id: string;
+    student_name: string;
+    assignment_title: string;
+    score: number;
+    maximum_marks: number;
+    percentage: number;
+    primary_weakness?: string | null;
+  }>;
 }

@@ -15,7 +15,7 @@ class ModelNotInitializedError(Exception):
 class AIProvider(ABC):
     """
     Base abstract provider for on-device AI runtimes.
-    Designed for pluggable local execution (Host CPU, DirectML GPU, Snapdragon NPU via QNN).
+    Designed for pluggable local execution (Local CPU, GPU, On-Device Neural Engine).
     """
 
     @abstractmethod

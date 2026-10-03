@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState } from 'react';
-import type { TabType, AIModelStatus, InferenceDevice, SystemModelStatus, ModelStatusResponse } from '../types';
+import type { TabType, UserRole, AIModelStatus, InferenceDevice, SystemModelStatus, ModelStatusResponse } from '../types';
 import { useBackendStatus } from '../hooks/useBackendStatus';
 
 interface AppContextType {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
+  userRole: UserRole;
+  setUserRole: (role: UserRole) => void;
   aiStatus: AIModelStatus;
   setAiStatus: (status: AIModelStatus) => void;
   isDemoMode: boolean;
@@ -14,6 +16,14 @@ interface AppContextType {
   setInferenceDevice: (device: InferenceDevice) => void;
   systemStatus: SystemModelStatus;
   updateSystemStatus: (status: Partial<SystemModelStatus>) => void;
+
+  // Assessment -> AI Tutor transition context
+  tutorInitialPrompt: string | null;
+  setTutorInitialPrompt: (prompt: string | null) => void;
+
+  // Teacher Review routing state
+  selectedTeacherSubmissionId: string | null;
+  setSelectedTeacherSubmissionId: (id: string | null) => void;
 
   // Backend live integration
   backendConnected: boolean;
@@ -28,10 +38,9 @@ const defaultSystemStatus: SystemModelStatus = {
   speechStatus: 'not_installed',
   visionStatus: 'ready',
   activeDevice: 'CPU',
-  deviceTarget: 'Snapdragon X Elite / X Plus / Snapdragon X2',
-  isSnapdragonDetected: false,
-  npuAvailable: false,
-  quantization: 'INT4 / W4A16 (Qualcomm AI Hub Target)',
+  deviceTarget: 'On-Device Local AI Engine',
+  isEngineActive: true,
+  quantization: 'INT4 / Local Quantized',
   memoryUsageMb: 248,
 };
 
@@ -39,10 +48,22 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [userRole, setUserRoleState] = useState<UserRole>('student');
   const [aiStatus, setAiStatus] = useState<AIModelStatus>('NOT_INSTALLED');
   const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
   const [inferenceDevice, setInferenceDevice] = useState<InferenceDevice>('AUTO');
   const [systemStatus, setSystemStatus] = useState<SystemModelStatus>(defaultSystemStatus);
+  const [tutorInitialPrompt, setTutorInitialPrompt] = useState<string | null>(null);
+  const [selectedTeacherSubmissionId, setSelectedTeacherSubmissionId] = useState<string | null>(null);
+
+  const setUserRole = (role: UserRole) => {
+    setUserRoleState(role);
+    if (role === 'teacher') {
+      setActiveTab('teacher-dashboard');
+    } else {
+      setActiveTab('dashboard');
+    }
+  };
 
   // Live backend connection & model status
   const {
@@ -70,6 +91,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         activeTab,
         setActiveTab,
+        userRole,
+        setUserRole,
         aiStatus,
         setAiStatus,
         isDemoMode,
@@ -84,6 +107,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         backendError,
         modelStatus,
         retryBackendConnection,
+        tutorInitialPrompt,
+        setTutorInitialPrompt,
+        selectedTeacherSubmissionId,
+        setSelectedTeacherSubmissionId,
       }}
     >
       {children}

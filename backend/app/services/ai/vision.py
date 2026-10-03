@@ -92,7 +92,7 @@ class VisionService(VisionProvider):
             "model": self.model_name if self.is_initialized() else None,
             "runtime": "onnxruntime",
             "device": settings.DEV_ENVIRONMENT,
-            "target_upgrade": "Snapdragon Copilot+ PC (Hexagon NPU via QNN Execution Provider)"
+            "target_upgrade": "On-Device Neural Engine"
         }
 
     def process_frame(self, image_bytes: bytes, confidence_threshold: float = 0.70) -> Dict[str, Any]:

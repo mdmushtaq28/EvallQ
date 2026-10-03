@@ -16,8 +16,8 @@ export const Card: React.FC<CardProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm transition-all duration-200 ${
-        hoverable ? 'hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md cursor-pointer' : ''
+      className={`bg-[#0A0A0A] border border-white/[0.08] rounded-[24px] p-6 lg:p-7 transition-all duration-200 ${
+        hoverable ? 'hover:border-white/[0.18] hover:bg-[#0E0E0E] cursor-pointer' : ''
       } ${className}`}
     >
       {children}
@@ -33,17 +33,17 @@ export const CardHeader: React.FC<{
   className?: string;
 }> = ({ title, subtitle, action, icon, className = '' }) => {
   return (
-    <div className={`flex items-start justify-between mb-4 ${className}`}>
+    <div className={`flex items-start justify-between mb-5 ${className}`}>
       <div className="flex items-center gap-3">
         {icon && (
-          <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+          <div className="p-2.5 rounded-xl bg-[#8052FF]/10 border border-[#8052FF]/20 text-[#8052FF]">
             {icon}
           </div>
         )}
         <div>
-          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+          <h3 className="text-base font-normal tracking-tight text-white">{title}</h3>
           {subtitle && (
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>
+            <p className="text-xs text-[#9A9A9A] font-light mt-0.5">{subtitle}</p>
           )}
         </div>
       </div>
