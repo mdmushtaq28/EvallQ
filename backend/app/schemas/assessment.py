@@ -58,6 +58,8 @@ class QuestionEvaluationResult(BaseModel):
     strengths: str = ""
     mistakes: str = ""
     learning_gap: str = ""
+    is_correct: Optional[bool] = None
+    ideal_answer: Optional[str] = None
 
 
 class TopicPerformanceItem(BaseModel):

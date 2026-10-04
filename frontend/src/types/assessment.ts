@@ -53,6 +53,8 @@ export interface QuestionEvaluationResult {
   strengths: string;
   mistakes: string;
   learning_gap: string;
+  is_correct?: boolean;
+  ideal_answer?: string;
 }
 
 export interface TopicPerformanceItem {

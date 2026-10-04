@@ -299,14 +299,14 @@ export const StudentResultPage: React.FC = () => {
                     </span>
                     <span
                       className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                        qPct >= 70
+                        qScore === 0 || q.rubric_match === 'Incorrect'
+                          ? 'bg-rose-500/15 text-rose-400'
+                          : qPct >= 70
                           ? 'bg-emerald-500/15 text-emerald-400'
-                          : qPct >= 50
-                          ? 'bg-[#FFB829]/15 text-[#FFB829]'
-                          : 'bg-rose-500/15 text-rose-400'
+                          : 'bg-[#FFB829]/15 text-[#FFB829]'
                       }`}
                     >
-                      {q.rubric_match || (qPct >= 70 ? 'Strong' : 'Partial')}
+                      {qScore === 0 || q.rubric_match === 'Incorrect' ? 'Incorrect' : (q.rubric_match || (qPct >= 70 ? 'Strong' : 'Partial'))}
                     </span>
                   </div>
                 </div>
@@ -327,7 +327,7 @@ export const StudentResultPage: React.FC = () => {
 
                 {/* AI Evaluation Analysis */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  {q.strengths && (
+                  {q.strengths && qScore > 0 && q.rubric_match !== 'Incorrect' && (
                     <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-emerald-300">
                       <p className="text-[10px] font-mono uppercase text-emerald-400 mb-1">Demonstrated Strengths</p>
                       <p>{q.strengths}</p>

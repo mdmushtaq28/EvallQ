@@ -451,6 +451,10 @@ async def teacher_review_assessment(
     # Reconstruct response
     eval_questions: List[QuestionEvaluationResult] = []
     for q in questions:
+        effective_marks = q.teacher_marks if q.teacher_marks is not None else q.suggested_marks
+        q_is_correct = bool(q.rubric_match != "Incorrect" and effective_marks and effective_marks > 0)
+        clean_strengths = (q.strengths or "") if (q_is_correct and effective_marks > 0) else ""
+
         eval_questions.append(
             QuestionEvaluationResult(
                 question_number=q.question_number,
@@ -465,9 +469,11 @@ async def teacher_review_assessment(
                 rubric_match=q.rubric_match or "Partial",
                 reasoning=q.reasoning or "",
                 feedback=q.feedback or "",
-                strengths=q.strengths or "",
+                strengths=clean_strengths,
                 mistakes=q.mistakes or "",
                 learning_gap=q.learning_gap or "",
+                is_correct=q_is_correct,
+                ideal_answer=""
             )
         )
 

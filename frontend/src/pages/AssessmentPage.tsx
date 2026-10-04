@@ -1125,7 +1125,7 @@ export const AssessmentPage: React.FC = () => {
                           </div>
                         )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
-                          {q.strengths && (
+                          {q.strengths && (q.teacher_marks !== null && q.teacher_marks !== undefined ? q.teacher_marks : q.suggested_marks) > 0 && q.rubric_match !== 'Incorrect' && (
                             <div className="text-emerald-700 dark:text-emerald-400">
                               <strong>✓ Strengths: </strong> {q.strengths}
                             </div>

@@ -659,7 +659,7 @@ export const TeacherDashboardPage: React.FC = () => {
                       <p className="text-xs text-white font-medium">{q.question_text}</p>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                        {q.strengths && (
+                        {q.strengths && currentTeacherMarks > 0 && q.rubric_match !== 'Incorrect' && (
                           <div className="p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-emerald-300 text-[11px]">
                             <strong className="block text-[10px] font-mono text-emerald-400 uppercase">Strengths</strong>
                             {q.strengths}
