@@ -159,7 +159,11 @@ class AssessmentOCRService:
         all_confidences: List[float] = []
         combined_texts: List[str] = []
 
-        engine = get_ocr_engine()
+        try:
+            engine = get_ocr_engine()
+        except Exception as ocr_err:
+            logger.warning(f"RapidOCR engine unavailable, will use embedded PDF text fallback: {ocr_err}")
+            engine = None
 
         for page_idx in range(page_count):
             page_num = page_idx + 1
@@ -181,24 +185,28 @@ class AssessmentOCRService:
                 img_np = np.array(img_pil)
             else:
                 img_pil = Image.frombytes("L", [pix.width, pix.height], pix.samples).convert("RGB")
-                img_np = np.array(img_pil)
+                img_np = np.array(img_np if 'img_np' in locals() else img_pil)
 
             # Check if embedded text exists
             embedded_text = page.get_text("text").strip()
 
-            # Execute real OCR
-            ocr_result, _ = engine(img_np)
             raw_lines = []
             page_confs = []
 
-            if ocr_result:
-                for item in ocr_result:
-                    if len(item) >= 3:
-                        text = str(item[1]).strip()
-                        conf = float(item[2])
-                        if text:
-                            raw_lines.append(text)
-                            page_confs.append(conf)
+            # Execute real OCR if engine is available
+            if engine is not None:
+                try:
+                    ocr_result, _ = engine(img_np)
+                    if ocr_result:
+                        for item in ocr_result:
+                            if len(item) >= 3:
+                                text = str(item[1]).strip()
+                                conf = float(item[2])
+                                if text:
+                                    raw_lines.append(text)
+                                    page_confs.append(conf)
+                except Exception as ocr_page_err:
+                    logger.warning(f"Page {page_num} OCR execution error: {ocr_page_err}")
 
             ocr_extracted_text = "\n".join(raw_lines)
 
@@ -210,6 +218,12 @@ class AssessmentOCRService:
             else:
                 final_page_text = embedded_text
                 page_conf = 0.95
+
+            if not final_page_text.strip() and engine is None:
+                raise AssessmentOCRError(
+                    "Local OCR engine unavailable (rapidocr_onnxruntime is not installed) "
+                    "and the uploaded document does not contain embedded digital text."
+                )
 
             norm_page_text = cls.normalize_ocr_text(final_page_text)
 
