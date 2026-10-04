@@ -87,6 +87,8 @@ class QuestionEvaluationResult(BaseModel):
     ai_score: Optional[float] = None
     teacher_final_score: Optional[float] = None
     override_reason: Optional[str] = None
+    teacher_context_used: Optional[bool] = False
+    retrieved_sources: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
 
 
 class TopicPerformanceItem(BaseModel):
@@ -130,6 +132,8 @@ class AssessmentEvaluationResponse(BaseModel):
     topic_performance: List[TopicPerformanceItem]
     learning_gaps: List[LearningGapItem]
     recommendations: List[RecommendationItem]
+    teacher_context_used: Optional[bool] = False
+    retrieved_sources: Optional[List[Dict[str, Any]]] = Field(default_factory=list)
 
     @model_validator(mode="before")
     @classmethod

@@ -27,6 +27,8 @@ from ...schemas.assignment import (
 )
 from ...core.auth import get_optional_current_user, get_current_teacher
 from ...services.ai.local_llm import local_llm_service
+from ...models.teacher_rag import TeacherRAGDocument
+from ...services.ai.teacher_rag import TeacherRAGService
 
 logger = logging.getLogger("evallq.teacher.api")
 router = APIRouter(prefix="/teacher", tags=["Teacher Intelligence"])
@@ -1144,3 +1146,124 @@ async def get_student_drilldown(
         "submissions": sub_history,
         "topic_mastery": topic_summary
     }
+
+
+# =========================================================================
+# Teacher-Specific Offline RAG Endpoints
+# =========================================================================
+
+class TeacherRAGDocumentCreateRequest(BaseModel):
+    title: str = Field(..., min_length=2)
+    document_type: str = "Rubric"  # "Rubric", "Marking Scheme", "Model Answer", "Previous Evaluated Assignment", "Teacher Feedback", "Grading Guideline"
+    subject: str = "Computer Science"
+    topic: Optional[str] = "General"
+    question_text: Optional[str] = None
+    content: str = Field(..., min_length=5)
+
+
+@router.get("/rag/documents")
+async def list_teacher_rag_documents(
+    current_teacher: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Lists all indexed offline RAG documents belonging to the current teacher.
+    Enforces strict teacher isolation.
+    """
+    teacher_id = current_teacher.id if current_teacher else "4d093a75-5dca-4f7d-8a7e-1214beb5aec6"
+    docs = (
+        db.query(TeacherRAGDocument)
+        .filter(TeacherRAGDocument.teacher_id == teacher_id)
+        .order_by(TeacherRAGDocument.created_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id": d.id,
+            "teacher_id": d.teacher_id,
+            "title": d.title,
+            "document_type": d.document_type,
+            "subject": d.subject,
+            "topic": d.topic,
+            "question_text": d.question_text,
+            "content": d.content,
+            "created_at": d.created_at.isoformat() if d.created_at else ""
+        }
+        for d in docs
+    ]
+
+
+@router.post("/rag/documents", status_code=status.HTTP_201_CREATED)
+async def create_teacher_rag_document(
+    req: TeacherRAGDocumentCreateRequest,
+    current_teacher: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Embeds and indexes a new reference document locally into SQLite for the current teacher.
+    Uses local fastembed ONNX embeddings (bge-small-en-v1.5).
+    """
+    teacher_id = current_teacher.id if current_teacher else "4d093a75-5dca-4f7d-8a7e-1214beb5aec6"
+    doc = TeacherRAGService.index_document(
+        db=db,
+        teacher_id=teacher_id,
+        title=req.title,
+        document_type=req.document_type,
+        content=req.content,
+        subject=req.subject,
+        topic=req.topic or "General",
+        question_text=req.question_text or ""
+    )
+    return {
+        "id": doc.id,
+        "teacher_id": doc.teacher_id,
+        "title": doc.title,
+        "document_type": doc.document_type,
+        "subject": doc.subject,
+        "topic": doc.topic,
+        "question_text": doc.question_text,
+        "content": doc.content,
+        "created_at": doc.created_at.isoformat() if doc.created_at else ""
+    }
+
+
+@router.delete("/rag/documents/{document_id}")
+async def delete_teacher_rag_document(
+    document_id: str,
+    current_teacher: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Deletes an indexed reference document for the current teacher.
+    Validates ownership to guarantee Teacher A cannot delete Teacher B's document.
+    """
+    teacher_id = current_teacher.id if current_teacher else "4d093a75-5dca-4f7d-8a7e-1214beb5aec6"
+    doc = db.query(TeacherRAGDocument).filter(
+        TeacherRAGDocument.id == document_id,
+        TeacherRAGDocument.teacher_id == teacher_id
+    ).first()
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found or access denied."
+        )
+    db.delete(doc)
+    db.commit()
+    return {"message": "Document deleted successfully", "document_id": document_id}
+
+
+@router.post("/rag/sample")
+async def seed_teacher_rag_sample(
+    current_teacher: Optional[User] = Depends(get_optional_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Seeds demonstration sample documents for the current teacher if none exist.
+    """
+    teacher_id = current_teacher.id if current_teacher else "4d093a75-5dca-4f7d-8a7e-1214beb5aec6"
+    seeded_count = TeacherRAGService.seed_sample_documents_if_empty(db=db, teacher_id=teacher_id)
+    return {
+        "message": f"Successfully seeded {seeded_count} sample documents for teacher.",
+        "seeded_count": seeded_count
+    }
+

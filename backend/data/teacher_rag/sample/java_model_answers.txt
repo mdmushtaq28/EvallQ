@@ -1,0 +1,7 @@
+[Document Type: Model Answer]
+Topic: Inheritance
+Subject: Computer Science
+Target Question: Explain inheritance in Java.
+
+Ideal Teacher Model Answer:
+Inheritance is a fundamental Object-Oriented Programming (OOP) mechanism in Java that allows a new class (known as a child class or subclass) to acquire and reuse the properties (fields/state) and behaviors (methods) of an existing class (known as a parent class or superclass). In Java, inheritance is established using the 'extends' keyword. Java supports single inheritance of state to prevent ambiguity, allowing one direct superclass per derived class. Common examples include 'class Car extends Vehicle' where Car reuses engine properties and drive() methods while adding specialized functionality.

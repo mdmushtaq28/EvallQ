@@ -1,0 +1,11 @@
+[Document Type: Rubric]
+Topic: Inheritance
+Subject: Computer Science
+Target Question: Explain inheritance in Java and its core principles.
+
+Scoring Criteria:
+- Core Concept & Definition (2 pts): Defines inheritance as an OOP mechanism where a child class (subclass) derives state and behaviors from a parent class (superclass).
+- Parent-Child Relationship (3 pts): Explains class hierarchy, subclass/superclass relationships, and the concept of code reusability.
+- Properties and Methods Inheritance (2 pts): Clearly states that instance fields (state) and methods (behavior) are inherited according to access modifier rules.
+- extends Keyword (2 pts): Identifies that Java uses the 'extends' keyword for single class inheritance.
+- Example (1 pt): Provides a concrete syntax or conceptual example (e.g. class Dog extends Animal).

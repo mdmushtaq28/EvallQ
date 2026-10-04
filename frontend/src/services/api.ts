@@ -708,6 +708,40 @@ class ApiService {
   public async getStudentResults(): Promise<StudentResultListItem[]> {
     return this.request<StudentResultListItem[]>('/api/student/results');
   }
+
+  // =========================================================================
+  // Teacher-Specific Offline RAG API
+  // =========================================================================
+
+  public async getTeacherRAGDocuments(): Promise<any[]> {
+    return this.request<any[]>('/api/teacher/rag/documents');
+  }
+
+  public async createTeacherRAGDocument(data: {
+    title: string;
+    document_type: string;
+    subject?: string;
+    topic?: string;
+    question_text?: string;
+    content: string;
+  }): Promise<any> {
+    return this.request<any>('/api/teacher/rag/documents', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  public async deleteTeacherRAGDocument(docId: string): Promise<any> {
+    return this.request<any>(`/api/teacher/rag/documents/${encodeURIComponent(docId)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  public async seedTeacherRAGSample(): Promise<any> {
+    return this.request<any>('/api/teacher/rag/sample', {
+      method: 'POST',
+    });
+  }
 }
 
 export const api = new ApiService();

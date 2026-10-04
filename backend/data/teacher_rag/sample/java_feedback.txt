@@ -1,0 +1,10 @@
+[Document Type: Teacher Feedback]
+Topic: Inheritance
+Subject: Computer Science
+Target Question: Common Grading Feedback and Misconception Guidance
+
+Grading Guidance & Guidelines:
+1. When evaluating inheritance answers, accept synonyms and semantic equivalents. Subclass/derived class/child class and superclass/base class/parent class are fully interchangeable.
+2. If a student simply says "inheritance is a java part" or "inheritance is used in programming", do not award full marks. This shows domain recognition without functional understanding. Award at most 1 to 2 marks out of 10.
+3. If a student explains data hiding or abstraction (e.g., hiding data and showing only important data) when asked about inheritance, this is a topic confusion. Do not award marks for unrelated concepts.
+4. Always praise students who clearly state code reusability and identify both state (properties) and behavior (methods) as inherited components.

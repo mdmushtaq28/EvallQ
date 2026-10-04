@@ -55,5 +55,8 @@ Thumbs.db
 scratch/
 *.log
 .system_generated/
-backend/.venv/
-data/
+/data/
+/backend/data/*
+!/backend/data/teacher_rag/
+!/backend/data/teacher_rag/sample/
+!/backend/data/teacher_rag/sample/*

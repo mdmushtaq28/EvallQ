@@ -6,6 +6,7 @@ import numpy as np
 from pydantic import BaseModel, Field, model_validator
 
 from .local_llm import local_llm_service
+from .teacher_rag import TeacherRAGService
 from ..documents.embeddings import LocalEmbeddingService
 from ...schemas.assessment import (
     ExtractedQuestionItem,
@@ -807,10 +808,13 @@ class AssessmentEvaluatorService:
     async def evaluate_question(
         cls,
         q_item: ExtractedQuestionItem,
-        rubric_guidance: str = ""
+        rubric_guidance: str = "",
+        teacher_id: Optional[str] = None,
+        db: Optional[Any] = None
     ) -> QuestionEvaluationResult:
         """
         Evaluates a single question against the teacher-controlled marking rubric.
+        Supports optional Teacher-Specific Offline RAG as an enhancement.
         """
         cleaned_ans = (q_item.student_answer or "").strip()
         is_empty = not cleaned_ans or cleaned_ans.lower() in [
@@ -839,6 +843,18 @@ class AssessmentEvaluatorService:
                 f"[CRITICAL RUBRIC MISMATCH] Question ID: {q_item.question_id}, Text: '{q_item.question_text}'. "
                 f"Reason: {mismatch_reason}. Realigning rubric and model answer."
             )
+
+        # Step 0.5: Optional Teacher-Specific Offline RAG Context Retrieval
+        rag_res = TeacherRAGService.retrieve_teacher_context(
+            db=db,
+            teacher_id=teacher_id,
+            question_text=q_item.question_text,
+            topic=topic,
+            subject=getattr(q_item, "topic", "Computer Science") or "Computer Science"
+        )
+        teacher_context_used = rag_res.get("teacher_context_used", False)
+        retrieved_sources = rag_res.get("retrieved_sources", [])
+        rag_context_text = rag_res.get("context_text", "")
 
         expected_concepts = getattr(q_item, "key_concepts", None) or []
         if isinstance(expected_concepts, str) and expected_concepts.strip():
@@ -887,7 +903,9 @@ class AssessmentEvaluatorService:
                 criterion_scores=empty_criteria,
                 supported_points=[],
                 missing_points=[c["criterion"] for c in criteria],
-                teacher_review_required=False
+                teacher_review_required=False,
+                teacher_context_used=teacher_context_used,
+                retrieved_sources=retrieved_sources
             )
 
         # Prompt injection detection safeguard
@@ -930,7 +948,9 @@ class AssessmentEvaluatorService:
                 criterion_scores=injection_criteria,
                 supported_points=[],
                 missing_points=[c["criterion"] for c in criteria],
-                teacher_review_required=True
+                teacher_review_required=True,
+                teacher_context_used=teacher_context_used,
+                retrieved_sources=retrieved_sources
             )
 
         # Evaluate each rubric criterion independently using semantic equivalence engine
@@ -970,12 +990,20 @@ class AssessmentEvaluatorService:
         # Query local Qwen model to enhance feedback and pedagogical remarks
         # (Pass teacher rubric criteria to guide LLM)
         rubric_spec_str = "\n".join(f"- {c['criterion']} (Max: {c['max_score']} pts)" for c in criteria)
+        rag_prompt_section = ""
+        if teacher_context_used and rag_context_text:
+            rag_prompt_section = (
+                f"\nTEACHER RAG BENCHMARK & PEDAGOGICAL GUIDANCE (Reference only - explicit rubric takes absolute priority):\n"
+                f"{rag_context_text}\n"
+            )
+
         prompt = (
             f"Question: {q_item.question_text}\n"
             f"Maximum Marks: {max_m}\n"
             f"Strictness Mode: {strictness}\n"
             f"{f'Model Answer: {model_ans}' if model_ans else ''}\n"
             f"Teacher Marking Rubric:\n{rubric_spec_str}\n"
+            f"{rag_prompt_section}"
             f"Student Answer: {cleaned_ans}\n\n"
             f"Evaluate the student's answer against the teacher's rubric criteria and return valid JSON."
         )
@@ -1042,6 +1070,8 @@ class AssessmentEvaluatorService:
             f"Rubric evaluation awarded {total_score}/{max_m} pts across {len(criterion_results)} criteria "
             f"({strictness} mode)."
         )
+        if teacher_context_used:
+            reasoning_str += f" [Teacher Context: {len(retrieved_sources)} reference source(s) utilized.]"
         if mismatch_detected:
             reasoning_str += f" [Rubric Realignment: Criteria realigned to match question concept '{q_item.question_text}'.]"
 
@@ -1075,6 +1105,8 @@ class AssessmentEvaluatorService:
             supported_points=supported_points,
             missing_points=missing_points,
             teacher_review_required=teacher_review_required,
+            teacher_context_used=teacher_context_used,
+            retrieved_sources=retrieved_sources,
         )
 
     @classmethod
@@ -1082,16 +1114,24 @@ class AssessmentEvaluatorService:
         cls,
         submission_id: str,
         questions: List[ExtractedQuestionItem],
-        rubric_guidance: str = ""
+        rubric_guidance: str = "",
+        teacher_id: Optional[str] = None,
+        db: Optional[Any] = None
     ) -> AssessmentEvaluationResponse:
         """
         Evaluates all questions sequentially, aggregates total scores,
         computes topic performance, identifies learning gaps, and generates recommendations.
+        Incorporates optional Teacher-Specific Offline RAG context.
         """
         evaluated_questions: List[QuestionEvaluationResult] = []
 
         for q in questions:
-            eval_res = await cls.evaluate_question(q, rubric_guidance)
+            eval_res = await cls.evaluate_question(
+                q_item=q,
+                rubric_guidance=rubric_guidance,
+                teacher_id=teacher_id,
+                db=db
+            )
             evaluated_questions.append(eval_res)
 
         total_max = sum(q.maximum_marks for q in evaluated_questions)
@@ -1171,6 +1211,17 @@ class AssessmentEvaluatorService:
                 )
             )
 
+        # Aggregate teacher context and sources
+        overall_teacher_context_used = any(bool(q.teacher_context_used) for q in evaluated_questions)
+        seen_source_ids = set()
+        aggregated_sources = []
+        for q in evaluated_questions:
+            for s in (q.retrieved_sources or []):
+                doc_key = s.get("doc_id") or s.get("title")
+                if doc_key and doc_key not in seen_source_ids:
+                    seen_source_ids.add(doc_key)
+                    aggregated_sources.append(s)
+
         return AssessmentEvaluationResponse(
             submission_id=submission_id,
             total_maximum_marks=round(total_max, 1),
@@ -1186,4 +1237,6 @@ class AssessmentEvaluatorService:
             topic_performance=topic_performance,
             learning_gaps=learning_gaps,
             recommendations=recommendations,
+            teacher_context_used=overall_teacher_context_used,
+            retrieved_sources=aggregated_sources,
         )

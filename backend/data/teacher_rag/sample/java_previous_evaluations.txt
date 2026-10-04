@@ -1,0 +1,15 @@
+[Document Type: Previous Evaluated Assignment]
+Topic: Inheritance
+Subject: Computer Science
+Target Question: Explain inheritance in Java.
+
+Sample Evaluated Student Answer:
+Student Wording: "A subclass inherits variables and functions from its superclass using extends."
+Teacher Evaluation & Scoring Rationale:
+- Definition: Awarded 2/2 pts. Recognizing 'subclass' and 'superclass' shows sound conceptual understanding.
+- Parent-child relationship: Awarded 3/3 pts. Semantic equivalence accepted for 'subclass' inheriting from 'superclass'.
+- Properties and methods: Awarded 2/2 pts. Accepted 'variables' as properties and 'functions' as methods.
+- extends keyword: Awarded 2/2 pts. Directly stated 'using extends'.
+- Example: 0/1 pt deducted because no concrete example like Animal/Dog was written.
+Total Awarded: 9/10 pts.
+Teacher Remark: Strong conceptual explanation. Remember to include a quick code or domain example next time to earn full marks.

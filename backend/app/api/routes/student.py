@@ -390,12 +390,17 @@ async def submit_student_typed_assignment(
         for qr in question_records
     ]
 
-    # Execute AI evaluation using the teacher-controlled rubric evaluator
+    # Execute AI evaluation using the teacher-controlled rubric evaluator with Teacher RAG support
     logger.info(
         f"Executing AI rubric evaluation for typed submission {submission_id} "
         f"(Student: {current_student.name}, Questions: {len(extracted_items)})..."
     )
-    eval_response = await AssessmentEvaluatorService.evaluate_assessment(submission_id, extracted_items)
+    eval_response = await AssessmentEvaluatorService.evaluate_assessment(
+        submission_id=submission_id,
+        questions=extracted_items,
+        teacher_id=assignment.teacher_id if assignment else None,
+        db=db
+    )
 
     # Persist AI evaluation results back to AssessmentQuestion records using question_id
     q_results_by_id = {qe.question_id: qe for qe in eval_response.questions if qe.question_id}
@@ -534,7 +539,8 @@ async def get_student_submission_result(
                 criterion_scores=q.get_criterion_scores_list(),
                 supported_points=q.get_supported_points_list(),
                 missing_points=q.get_missing_points_list(),
-                teacher_review_required=q.teacher_review_required if q.teacher_review_required is not None else False
+                teacher_review_required=q.teacher_review_required if q.teacher_review_required is not None else False,
+                teacher_context_used="[Teacher Context:" in (q.reasoning or "")
             )
         )
 
@@ -620,5 +626,6 @@ async def get_student_submission_result(
         questions=question_results,
         topic_performance=topic_items,
         learning_gaps=gap_items,
-        recommendations=rec_items
+        recommendations=rec_items,
+        teacher_context_used=any("[Teacher Context:" in (q.reasoning or "") for q in submission.questions)
     )

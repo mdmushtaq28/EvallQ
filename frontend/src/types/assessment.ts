@@ -73,6 +73,8 @@ export interface QuestionEvaluationResult {
   ai_score?: number;
   teacher_final_score?: number | null;
   override_reason?: string | null;
+  teacher_context_used?: boolean;
+  retrieved_sources?: Array<{ document_id: string; title: string; document_type: string; relevance_score: number }>;
 }
 
 export interface TopicPerformanceItem {
@@ -112,6 +114,8 @@ export interface AssessmentEvaluationResponse {
   topic_performance: TopicPerformanceItem[];
   learning_gaps: LearningGapItem[];
   recommendations: RecommendationItem[];
+  teacher_context_used?: boolean;
+  retrieved_sources?: Array<{ document_id: string; title: string; document_type: string; relevance_score: number }>;
 }
 
 export interface TeacherQuestionReview {

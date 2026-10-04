@@ -154,6 +154,12 @@ export const StudentResultPage: React.FC = () => {
           </button>
 
           <div className="flex items-center gap-2">
+            {result.teacher_context_used && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                <BookOpen className="w-3.5 h-3.5" />
+                Teacher RAG Benchmarked
+              </span>
+            )}
             {isApproved ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -303,6 +309,12 @@ export const StudentResultPage: React.FC = () => {
                         {q.strictness} mode
                       </span>
                     )}
+                    {q.teacher_context_used && (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-mono uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-1">
+                        <BookOpen className="w-2.5 h-2.5" />
+                        Teacher RAG
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-3">
@@ -355,6 +367,24 @@ export const StudentResultPage: React.FC = () => {
                   <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] text-xs text-[#9A9A9A]">
                     <p className="text-[10px] font-mono uppercase text-[#8052FF] mb-1">Expected / Model Answer</p>
                     <p className="text-[#CCC]">{q.model_answer}</p>
+                  </div>
+                )}
+
+                {/* Teacher RAG References if utilized */}
+                {q.retrieved_sources && q.retrieved_sources.length > 0 && (
+                  <div className="p-3 rounded-xl bg-blue-500/5 border border-blue-500/20 text-xs text-blue-300 space-y-1.5">
+                    <p className="text-[10px] font-mono uppercase text-blue-400 flex items-center gap-1 font-medium">
+                      <BookOpen className="w-3 h-3" />
+                      Teacher RAG References Applied ({q.retrieved_sources.length})
+                    </p>
+                    <div className="space-y-1">
+                      {q.retrieved_sources.map((src: any, sIdx: number) => (
+                        <div key={sIdx} className="flex items-center justify-between text-[11px] text-[#BBB]">
+                          <span>• {src.title} <span className="text-[#666]">({src.document_type})</span></span>
+                          <span className="font-mono text-[10px] text-blue-400">Match: {Math.round(src.relevance_score * 100)}%</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
