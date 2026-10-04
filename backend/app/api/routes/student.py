@@ -168,6 +168,8 @@ async def get_student_assignment_detail(
     if sub and sub.questions:
         for q in sub.questions:
             submitted_answers_dict[str(q.question_number)] = q.student_answer
+            if getattr(q, 'question_id', None):
+                submitted_answers_dict[str(q.question_id)] = q.student_answer
 
     # Get exact teacher questions
     questions = assignment.get_questions_list()
@@ -303,7 +305,8 @@ async def submit_student_typed_assignment(
             detail="You have already submitted this assignment. Resubmission is closed."
         )
 
-    # Map answers by question_number
+    # Map answers by question_id first, fallback to question_number
+    answers_by_id = {str(a.question_id): a.answer_text.strip() for a in req.answers if a.question_id}
     answers_by_num = {a.question_number: a.answer_text.strip() for a in req.answers}
 
     # Fetch teacher's questions
@@ -340,15 +343,17 @@ async def submit_student_typed_assignment(
     db.add(submission)
     db.flush()
 
-    # Create AssessmentQuestion records with student's typed answers
+    # Create AssessmentQuestion records with student's typed answers linked by question_id
     question_records: List[AssessmentQuestion] = []
     for q in teacher_questions:
+        q_id = str(q.get("id") or "")
         q_num = q.get("question_number", 1)
-        student_ans = answers_by_num.get(q_num, "")
+        student_ans = (answers_by_id.get(q_id) if q_id and q_id in answers_by_id else None) or answers_by_num.get(q_num, "")
 
         qr = AssessmentQuestion(
             id=str(uuid.uuid4()),
             submission_id=submission_id,
+            question_id=q_id if q_id else None,
             question_number=q_num,
             page_number=1,
             question_text=q.get("question_text", f"Question {q_num}"),
@@ -370,6 +375,7 @@ async def submit_student_typed_assignment(
     # Build ExtractedQuestionItem list for the evaluator
     extracted_items = [
         ExtractedQuestionItem(
+            question_id=qr.question_id,
             question_number=qr.question_number,
             page_number=qr.page_number,
             question_text=qr.question_text,
@@ -391,10 +397,11 @@ async def submit_student_typed_assignment(
     )
     eval_response = await AssessmentEvaluatorService.evaluate_assessment(submission_id, extracted_items)
 
-    # Persist AI evaluation results back to AssessmentQuestion records
+    # Persist AI evaluation results back to AssessmentQuestion records using question_id
+    q_results_by_id = {qe.question_id: qe for qe in eval_response.questions if qe.question_id}
     q_results_by_num = {qe.question_number: qe for qe in eval_response.questions}
     for qr in question_records:
-        qe = q_results_by_num.get(qr.question_number)
+        qe = (q_results_by_id.get(qr.question_id) if qr.question_id and qr.question_id in q_results_by_id else None) or q_results_by_num.get(qr.question_number)
         if qe:
             qr.suggested_marks = qe.suggested_marks
             qr.topic = qe.topic
@@ -498,6 +505,7 @@ async def get_student_submission_result(
 
         question_results.append(
             QuestionEvaluationResult(
+                question_id=getattr(q, 'question_id', None) or str(q.id),
                 question_number=q.question_number,
                 page_number=q.page_number,
                 question_text=q.question_text,

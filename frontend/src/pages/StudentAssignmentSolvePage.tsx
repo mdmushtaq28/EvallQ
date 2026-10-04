@@ -27,7 +27,7 @@ export const StudentAssignmentSolvePage: React.FC = () => {
   } = useApp();
 
   const [assignment, setAssignment] = useState<StudentAssignmentDetail | null>(null);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [draftSaved, setDraftSaved] = useState(false);
@@ -60,7 +60,7 @@ export const StudentAssignmentSolvePage: React.FC = () => {
 
         // Check if there are draft answers stored locally
         const draftKey = `evallq_draft_${activeAssignmentId}`;
-        let localDraft: Record<number, string> = {};
+        let localDraft: Record<string, string> = {};
         if (typeof window !== 'undefined') {
           const raw = localStorage.getItem(draftKey);
           if (raw) {
@@ -73,17 +73,23 @@ export const StudentAssignmentSolvePage: React.FC = () => {
         }
 
         // Pre-fill answer state: prioritize submitted answers if completed, otherwise local draft, else blank
-        const initialAnswers: Record<number, string> = {};
+        const initialAnswers: Record<string, string> = {};
         const questionsList = data.questions || [];
 
         questionsList.forEach((q: any, idx: number) => {
-          const qNum = Number(q.question_number) || idx + 1;
-          if (data.submitted_answers && data.submitted_answers[String(qNum)] !== undefined) {
-            initialAnswers[qNum] = data.submitted_answers[String(qNum)];
-          } else if (localDraft[qNum] !== undefined) {
-            initialAnswers[qNum] = localDraft[qNum];
+          const qId = String(q.id || `q-${idx + 1}`);
+          const qNumStr = String(q.question_number || idx + 1);
+          if (data.submitted_answers && (data.submitted_answers[qId] !== undefined || data.submitted_answers[qNumStr] !== undefined)) {
+            const val = data.submitted_answers[qId] ?? data.submitted_answers[qNumStr];
+            initialAnswers[qId] = val;
+            initialAnswers[qNumStr] = val;
+          } else if (localDraft[qId] !== undefined || localDraft[qNumStr] !== undefined) {
+            const val = localDraft[qId] ?? localDraft[qNumStr];
+            initialAnswers[qId] = val;
+            initialAnswers[qNumStr] = val;
           } else {
-            initialAnswers[qNum] = '';
+            initialAnswers[qId] = '';
+            initialAnswers[qNumStr] = '';
           }
         });
 
@@ -99,9 +105,13 @@ export const StudentAssignmentSolvePage: React.FC = () => {
     fetchAssignment();
   }, [activeAssignmentId]);
 
-  const handleAnswerChange = (qNum: number, text: string) => {
+  const handleAnswerChange = (qId: string, qNum: number, text: string) => {
     setAnswers(prev => {
-      const updated = { ...prev, [qNum]: text };
+      const updated = {
+        ...prev,
+        [qId]: text,
+        [String(qNum)]: text,
+      };
       // Auto-save draft to localStorage
       if (typeof window !== 'undefined' && activeAssignmentId) {
         try {
@@ -154,8 +164,9 @@ export const StudentAssignmentSolvePage: React.FC = () => {
 
     try {
       const payload = normalizedQuestions.map(q => ({
+        question_id: q.id,
         question_number: q.question_number,
-        answer_text: answers[q.question_number] || '',
+        answer_text: answers[q.id] || answers[String(q.question_number)] || '',
       }));
 
       const evalResult = await api.submitStudentAssignment(activeAssignmentId, payload);
@@ -364,7 +375,7 @@ export const StudentAssignmentSolvePage: React.FC = () => {
           </div>
         ) : (
           normalizedQuestions.map(q => {
-            const answerValue = answers[q.question_number] || '';
+            const answerValue = answers[q.id] || answers[String(q.question_number)] || '';
             const isAnswered = answerValue.trim().length > 0;
 
             return (
@@ -425,7 +436,7 @@ export const StudentAssignmentSolvePage: React.FC = () => {
                     rows={5}
                     disabled={isAlreadySubmitted || submitting}
                     value={answerValue}
-                    onChange={e => handleAnswerChange(q.question_number, e.target.value)}
+                    onChange={e => handleAnswerChange(q.id, q.question_number, e.target.value)}
                     placeholder={
                       isAlreadySubmitted
                         ? 'No answer submitted.'

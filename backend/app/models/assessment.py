@@ -105,6 +105,7 @@ class AssessmentQuestion(Base):
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     submission_id = Column(String(36), ForeignKey("assessment_submissions.id", ondelete="CASCADE"), nullable=False, index=True)
+    question_id = Column(String(36), nullable=True, index=True)
     question_number = Column(Integer, nullable=False, default=1)
     page_number = Column(Integer, nullable=False, default=1)
 

@@ -96,7 +96,7 @@ class Assignment(Base):
                     q_max = float(q.get("maximum_marks") or q.get("max_marks") or 10.0)
                     q_num = int(q.get("question_number") or idx)
                     normalized.append({
-                        "id": str(q.get("id") or uuid.uuid4()),
+                        "id": str(q.get("id")) if q.get("id") else f"{self.id}-q{q_num}",
                         "question_number": q_num,
                         "question_text": q_text,
                         "question": q_text,

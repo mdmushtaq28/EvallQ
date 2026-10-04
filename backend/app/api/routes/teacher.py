@@ -1,5 +1,6 @@
 import json
 import logging
+import uuid
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -45,7 +46,15 @@ async def create_assignment(
     Creates a new teacher assignment with defined questions, rubrics, and student assignments.
     Guarantees questions are stored as child items and mapped to designated students.
     """
-    questions_json = json.dumps([q.model_dump() for q in req.questions]) if req.questions else None
+    prepared_questions = []
+    if req.questions:
+        for idx, q_data in enumerate(req.questions, start=1):
+            q_dict = q_data.model_dump()
+            q_id = str(getattr(q_data, "id", None) or q_dict.get("id") or uuid.uuid4())
+            q_dict["id"] = q_id
+            prepared_questions.append(q_dict)
+
+    questions_json = json.dumps(prepared_questions) if prepared_questions else None
     concepts_json = json.dumps(req.expected_concepts) if req.expected_concepts else None
 
     # Calculate total maximum marks from questions if not explicitly specified
@@ -76,21 +85,22 @@ async def create_assignment(
     db.add(assignment)
     db.flush()
 
-    # Create explicit child AssignmentQuestionItem records
-    if req.questions:
-        for idx, q_data in enumerate(req.questions, start=1):
-            q_num = q_data.question_number if q_data.question_number else idx
+    # Create explicit child AssignmentQuestionItem records with bound question_id
+    if prepared_questions:
+        for idx, q_dict in enumerate(prepared_questions, start=1):
+            q_num = q_dict.get("question_number") or idx
             q_item = AssignmentQuestionItem(
+                id=q_dict["id"],
                 assignment_id=assignment.id,
                 question_number=q_num,
-                question_text=q_data.question_text,
-                question_type=q_data.question_type or "Subjective",
-                maximum_marks=q_data.maximum_marks,
-                topic=q_data.topic or "General",
-                rubric=q_data.rubric or "",
-                model_answer=q_data.model_answer or q_data.expected_answer or "",
-                key_concepts=json.dumps(q_data.key_concepts) if isinstance(q_data.key_concepts, list) else (q_data.key_concepts or ""),
-                strictness=q_data.strictness or "balanced"
+                question_text=q_dict.get("question_text", f"Question {q_num}"),
+                question_type=q_dict.get("question_type") or "Subjective",
+                maximum_marks=float(q_dict.get("maximum_marks", 10.0)),
+                topic=q_dict.get("topic") or "General",
+                rubric=q_dict.get("rubric") or "",
+                model_answer=q_dict.get("model_answer") or q_dict.get("expected_answer") or "",
+                key_concepts=json.dumps(q_dict.get("key_concepts")) if isinstance(q_dict.get("key_concepts"), list) else (q_dict.get("key_concepts") or ""),
+                strictness=q_dict.get("strictness") or "balanced"
             )
             db.add(q_item)
 

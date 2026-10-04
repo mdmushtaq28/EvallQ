@@ -7,59 +7,26 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useApp } from '../../context/AppContext';
-import { useAuth } from '../../context/AuthContext';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
-  sidebarCollapsed?: boolean;
-  role?: 'teacher' | 'student';
+  sidebarCollapsed: boolean;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, role: propRole }) => {
+export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const { theme } = useTheme();
-  const { user, profile, role: authRole } = useAuth();
   const {
     activeTab,
-    setActiveTab,
+    userRole,
+    setUserRole,
+    currentUser,
+    setAuthModalOpen,
     backendConnected,
     backendLoading,
     retryBackendConnection,
   } = useApp();
 
-  const currentRole = propRole || authRole || 'student';
-
-  const teacherTitleMap: Record<string, { title: string; subtitle: string }> = {
-    'teacher-dashboard': {
-      title: 'Teacher Dashboard',
-      subtitle: 'Class performance overview, review queue, and assignment analytics',
-    },
-    'teacher-assignments': {
-      title: 'Assignment Management',
-      subtitle: 'Create course assessments, set maximum marks, and configure rubrics',
-    },
-    'teacher-review': {
-      title: 'Teacher Submission Review',
-      subtitle: 'Human-in-the-loop verification, score override, and final approval',
-    },
-    'teacher-analytics': {
-      title: 'Class Intelligence & Analytics',
-      subtitle: 'Calculated topic mastery, frequently missed questions, and Qwen AI teaching insights',
-    },
-    assessment: {
-      title: 'Rapid OCR Ingest',
-      subtitle: 'Real OCR, rubric-based evaluation, and curriculum learning gap discovery',
-    },
-    profile: {
-      title: 'Teacher Profile & Identity',
-      subtitle: 'Manage your verified instructor credentials and settings',
-    },
-    settings: {
-      title: 'System & Model Settings',
-      subtitle: 'Manage local runtimes, inference hardware targets, and privacy configs',
-    },
-  };
-
-  const studentTitleMap: Record<string, { title: string; subtitle: string }> = {
+  const titleMap: Record<string, { title: string; subtitle: string }> = {
     dashboard: {
       title: 'Student Dashboard',
       subtitle: 'Personalized study progress, assigned curriculum, and local AI reasoning',
@@ -89,7 +56,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, role: propRole 
       subtitle: 'On-device computer vision attention monitoring (zero cloud upload)',
     },
     assessment: {
-      title: 'Scan Assessment',
+      title: 'Assessment Intelligence',
       subtitle: 'Real OCR, rubric-based evaluation, and curriculum learning gap discovery',
     },
     analytics: {
@@ -100,17 +67,25 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, role: propRole 
       title: 'System & Model Settings',
       subtitle: 'Manage local runtimes, inference hardware targets, and privacy configs',
     },
-    profile: {
-      title: 'Student Profile & Identity',
-      subtitle: 'Manage your verified student credentials and settings',
+    'teacher-dashboard': {
+      title: 'Teacher Dashboard',
+      subtitle: 'Class performance overview, review queue, and assignment analytics',
+    },
+    'teacher-assignments': {
+      title: 'Assignment Management',
+      subtitle: 'Create course assessments, set maximum marks, and configure rubrics',
+    },
+    'teacher-review': {
+      title: 'Teacher Submission Review',
+      subtitle: 'Human-in-the-loop verification, score override, and final approval',
+    },
+    'teacher-analytics': {
+      title: 'Class Intelligence & Analytics',
+      subtitle: 'Calculated topic mastery, frequently missed questions, and Qwen AI teaching insights',
     },
   };
 
-  const titleMap = currentRole === 'teacher' ? teacherTitleMap : studentTitleMap;
-  const current = titleMap[activeTab] || {
-    title: currentRole === 'teacher' ? 'Teacher Dashboard' : 'Student Dashboard',
-    subtitle: 'Evaluate less. Teach more.',
-  };
+  const current = titleMap[activeTab] || { title: 'EvallQ', subtitle: 'Evaluate less. Teach more.' };
 
   return (
     <header className={`h-16 border-b px-4 sm:px-6 flex items-center justify-between z-20 transition-colors ${
@@ -182,49 +157,60 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, role: propRole 
 
         {/* Current User Quick Badge */}
         <button
-          onClick={() => setActiveTab('profile')}
+          onClick={() => setAuthModalOpen(true)}
           className={`flex items-center gap-2 px-2.5 py-1 rounded-full border transition-colors text-xs ${
             theme === 'dark'
               ? 'bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.08] text-white'
               : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-800'
           }`}
-          title="Click to View Profile / Account"
+          title="Click to Switch User / Sign In"
         >
           <div className="w-5 h-5 rounded-full bg-[#8052FF]/20 flex items-center justify-center text-[#8052FF]">
             <User className="w-3 h-3" />
           </div>
           <span className="hidden sm:inline font-medium text-xs">
-            {profile?.full_name || user?.user_metadata?.full_name || (currentRole === 'teacher' ? 'Prof. Robert Chen' : 'Alex Rivera')}
+            {currentUser?.name || (userRole === 'teacher' ? 'Prof. Robert Chen' : 'Alex Rivera')}
           </span>
           <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded uppercase ${
             theme === 'dark'
               ? 'bg-white/[0.06] text-[#9A9A9A]'
               : 'bg-slate-200 text-slate-600'
           }`}>
-            {currentRole}
+            {userRole}
           </span>
         </button>
 
-        {/* Verified Non-Switchable Role Badge */}
-        {currentRole === 'teacher' ? (
-          <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono uppercase tracking-wider font-medium ${
-            theme === 'dark'
-              ? 'bg-[#8052FF]/15 text-[#8052FF] border border-[#8052FF]/30'
-              : 'bg-[#8052FF]/10 text-[#8052FF] border border-[#8052FF]/20'
-          }`}>
-            <span className="w-1.5 h-1.5 rounded-full bg-[#8052FF] animate-pulse" />
-            <span>Instructor</span>
-          </div>
-        ) : (
-          <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono uppercase tracking-wider font-medium ${
-            theme === 'dark'
-              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-              : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-          }`}>
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Student</span>
-          </div>
-        )}
+        {/* Role Fast Selector: Student vs Teacher */}
+        <div className={`flex items-center p-0.5 rounded-full ${
+          theme === 'dark'
+            ? 'bg-white/[0.04] border border-white/[0.08]'
+            : 'bg-slate-100 border border-slate-200'
+        }`}>
+          <button
+            onClick={() => setUserRole('student')}
+            className={`px-2.5 sm:px-3 py-1 rounded-full text-xs transition-all tracking-tight ${
+              userRole === 'student'
+                ? 'bg-[#8052FF] text-white font-medium shadow-sm'
+                : theme === 'dark'
+                  ? 'text-[#9A9A9A] hover:text-white font-light'
+                  : 'text-slate-500 hover:text-slate-900 font-light'
+            }`}
+          >
+            Student
+          </button>
+          <button
+            onClick={() => setUserRole('teacher')}
+            className={`px-2.5 sm:px-3 py-1 rounded-full text-xs transition-all tracking-tight ${
+              userRole === 'teacher'
+                ? 'bg-[#8052FF] text-white font-medium shadow-sm'
+                : theme === 'dark'
+                  ? 'text-[#9A9A9A] hover:text-white font-light'
+                  : 'text-slate-500 hover:text-slate-900 font-light'
+            }`}
+          >
+            Teacher
+          </button>
+        </div>
 
         {/* Local First Badge */}
         <div className={`hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs ${

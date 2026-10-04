@@ -42,6 +42,7 @@ SUPERFICIAL_PATTERNS = [
 ]
 
 # Domain synonym & equivalence clusters to recognize semantically equivalent answers
+# Domain synonym & equivalence clusters to recognize semantically equivalent answers
 EQUIVALENCE_CLUSTERS = [
     {"subclass", "child class", "derived class", "sub class", "child"},
     {"superclass", "parent class", "base class", "super class", "parent"},
@@ -49,9 +50,9 @@ EQUIVALENCE_CLUSTERS = [
     {"properties", "property", "variables", "variable", "fields", "field", "attributes", "attribute", "data members", "members", "state"},
     {"methods", "method", "functions", "function", "behaviors", "behavior", "operations", "procedures"},
     {"extends", "extends keyword", "extension"},
-    {"polymorphism", "many forms", "overriding", "overloading"},
-    {"encapsulation", "data hiding", "data encapsulation", "wrapping code and data", "getters and setters"},
-    {"abstraction", "abstract class", "abstract classes", "interface", "interfaces", "hiding implementation"},
+    {"polymorphism", "many forms", "multiple forms", "overriding", "overloading", "runtime polymorphism", "compile-time polymorphism"},
+    {"encapsulation", "data hiding", "data encapsulation", "wrapping code and data", "bundling data and methods", "getters and setters", "private fields"},
+    {"abstraction", "abstract class", "abstract classes", "interface", "interfaces", "hiding implementation", "data hiding", "hiding of data", "hiding of the data", "hiding data", "showing only the important data", "showing essential features"},
 ]
 
 def check_term_match(concept_term: str, text: str) -> bool:
@@ -67,6 +68,117 @@ def check_term_match(concept_term: str, text: str) -> bool:
             if any(c in text_lower for c in cluster):
                 return True
     return False
+
+
+def extract_topic_concept(question_text: str, fallback_topic: str = "") -> str:
+    """Extracts the primary concept keyword from question_text or topic."""
+    q_clean = re.sub(r"[?.,!:;\"'()]", " ", (question_text or "").lower())
+    for phrase in [
+        "what is", "what are", "explain", "describe", "define", "what do you mean by", "discuss",
+        "differentiate between", "difference between", "give an example of", "give example of",
+        "give example for", "give the example for", "in java", "in python", "in c++", "in oop", "concept of"
+    ]:
+        q_clean = q_clean.replace(phrase, " ")
+
+    words = [w.strip() for w in q_clean.split() if w.strip() and len(w.strip()) > 2]
+    # Check for known core OOP concepts
+    for concept in ["abstraction", "encapsulation", "incapsulation", "inheritance", "polymorphism", "recursion", "sorting", "algorithm"]:
+        if any(concept in w for w in words):
+            return "encapsulation" if "capsulat" in concept else concept
+
+    if words:
+        return " ".join(words[:2])
+    return fallback_topic or "the concept"
+
+
+def check_and_sanitize_rubric_and_model_answer(
+    question_text: str,
+    model_answer: str,
+    rubric_str: str,
+    max_marks: float = 10.0,
+    topic: str = "General"
+) -> Tuple[str, str, bool, str]:
+    """
+    Validates semantic alignment between question, model answer, and rubric.
+    Prevents cross-contamination (e.g. Abstraction question with Inheritance rubric).
+    Returns: (sanitized_model_answer, sanitized_rubric_str, mismatch_detected, mismatch_reason)
+    """
+    q_lower = (question_text or "").lower()
+    r_lower = (rubric_str or "").lower()
+    m_lower = (model_answer or "").lower()
+
+    is_abstraction_q = "abstract" in q_lower
+    is_encapsulation_q = "encapsulat" in q_lower or "incapsulat" in q_lower
+    is_inheritance_q = "inherit" in q_lower or "subclass" in q_lower or "superclass" in q_lower
+    is_polymorphism_q = "polymorph" in q_lower or "overload" in q_lower or "overrid" in q_lower
+
+    # 1. Abstraction Question with Inheritance Rubric/Model Mismatch
+    if is_abstraction_q and not is_inheritance_q:
+        has_inheritance_rubric = any(k in r_lower for k in [
+            "extends keyword", "parent-child relationship", "subclass", "superclass", "properties/methods", "child class"
+        ])
+        has_inheritance_model = any(k in m_lower for k in [
+            "inheritance allows", "child class to get properties", "using extends", "parent class"
+        ])
+        if has_inheritance_rubric or has_inheritance_model:
+            sanitized_model = (
+                "Abstraction is an OOP principle of hiding internal implementation details and complexity "
+                "while showing only the essential features and public interface to the user, achieved through abstract classes and interfaces."
+            )
+            sanitized_rubric = (
+                "Definition = 3\n"
+                "Hiding implementation details = 3\n"
+                "Showing essential features = 2\n"
+                "Mechanism / Example = 2"
+            )
+            return (sanitized_model, sanitized_rubric, True, "Question asks about Abstraction, but rubric/model answer was configured with Inheritance criteria.")
+
+    # 2. Encapsulation Question with Misaligned Rubric
+    if is_encapsulation_q and not is_inheritance_q:
+        has_bad_rubric = any(k in r_lower for k in [
+            "time/space complexity", "quicksort", "extends keyword", "parent-child", "sorting"
+        ])
+        if has_bad_rubric or ("encapsulat" not in m_lower and "data hiding" not in m_lower and len(m_lower) > 30):
+            sanitized_model = (
+                "Encapsulation is the OOP mechanism of bundling data (fields) and methods into a single class unit "
+                "while restricting direct access to internal state using private access modifiers and public getters/setters."
+            )
+            sanitized_rubric = (
+                "Definition = 3\n"
+                "Bundling data and methods = 3\n"
+                "Data hiding and access control = 2\n"
+                "Getters and setters / Example = 2"
+            )
+            return (sanitized_model, sanitized_rubric, True, "Question asks about Encapsulation, but rubric was configured with mismatched criteria.")
+
+    # 3. Polymorphism Question with Misaligned Rubric
+    if is_polymorphism_q:
+        has_bad_rubric = any(k in r_lower for k in ["extends keyword", "parent-child relationship", "data hiding", "time/space complexity"])
+        if has_bad_rubric:
+            sanitized_model = (
+                "Polymorphism is the ability of an entity to take many forms, typically implemented via compile-time "
+                "method overloading and runtime method overriding."
+            )
+            sanitized_rubric = (
+                "Definition = 3\n"
+                "Many forms concept = 3\n"
+                "Method Overloading = 2\n"
+                "Method Overriding = 2"
+            )
+            return (sanitized_model, sanitized_rubric, True, "Question asks about Polymorphism, but rubric was configured with mismatched criteria.")
+
+    # 4. General Non-Inheritance Question having Inheritance Template Rubric
+    if not is_inheritance_q:
+        has_exclusive_inheritance_rubric = any(k in r_lower for k in ["extends keyword", "parent-child relationship"])
+        if has_exclusive_inheritance_rubric:
+            sanitized_model = model_answer if ("inheritance" not in m_lower) else f"A complete answer should accurately define and explain {question_text}."
+            m_40 = round(max_marks * 0.4, 1)
+            m_20 = round(max_marks * 0.2, 1)
+            sanitized_rubric = f"Core Concept & Definition = {m_40}\nTechnical Explanation & Mechanism = {m_40}\nAccuracy & Completeness = {m_20}"
+            return (sanitized_model, sanitized_rubric, True, f"Question '{question_text}' had an inherited template rubric not matching the question topic.")
+
+    return (model_answer, rubric_str, False, "")
+
 
 def parse_rubric_criteria(rubric_str: str, max_marks: float = 10.0, expected_concepts: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     """
@@ -144,19 +256,24 @@ def parse_rubric_criteria(rubric_str: str, max_marks: float = 10.0, expected_con
         {"criterion": "Accuracy & Completeness", "max_score": round(max_m * 0.2, 1)},
     ]
 
+
 def evaluate_criterion_semantically(
     criterion_name: str,
     criterion_max: float,
     student_ans: str,
     model_ans: str = "",
-    strictness: str = "balanced"
+    strictness: str = "balanced",
+    question_text: str = "",
+    topic: str = "General"
 ) -> Dict[str, Any]:
     """
     Evaluates a single criterion semantically with equivalence recognition and strictness.
+    Dynamically references the actual question concept instead of hardcoded inheritance.
     Does not require student to use exact wording of model answer.
     """
     c_lower = criterion_name.lower()
     ans_lower = student_ans.lower()
+    concept = extract_topic_concept(question_text, topic)
 
     if not student_ans.strip():
         return {
@@ -166,8 +283,8 @@ def evaluate_criterion_semantically(
             "feedback": f"No answer provided for {criterion_name}."
         }
 
-    # Criterion 1: Specific keyword/syntax requirement (e.g. "extends keyword")
-    if "extends" in c_lower or "keyword" in c_lower:
+    # Criterion 1: Specific keyword/syntax requirement (e.g. "extends keyword", "interface")
+    if "extends" in c_lower or ("keyword" in c_lower and "extend" in c_lower):
         if "extends" in ans_lower:
             return {
                 "criterion": criterion_name,
@@ -183,26 +300,43 @@ def evaluate_criterion_semantically(
                 "feedback": "Did not mention the 'extends' keyword."
             }
 
-    # Criterion 2: Example requirement
-    if "example" in c_lower:
-        has_example = any(kw in ans_lower for kw in [
-            "for example", "for instance", "e.g.", "such as", "an example is",
-            "class dog", "class car", "class animal", "class vehicle", "class b extends a", "class child extends parent"
-        ]) or ("{" in student_ans and "}" in student_ans and "class" in ans_lower)
-
-        if has_example:
+    if "interface" in c_lower or "abstract class" in c_lower:
+        has_iface = "interface" in ans_lower or "abstract class" in ans_lower or "abstract" in ans_lower
+        if has_iface:
             return {
                 "criterion": criterion_name,
                 "score": criterion_max,
                 "max_score": criterion_max,
-                "feedback": "Provided a relevant code or conceptual example."
+                "feedback": "Correctly references interfaces or abstract classes."
             }
         else:
             return {
                 "criterion": criterion_name,
                 "score": 0.0,
                 "max_score": criterion_max,
-                "feedback": "No code or practical example was provided."
+                "feedback": "Did not mention interfaces or abstract classes."
+            }
+
+    # Criterion 2: Example requirement
+    if "example" in c_lower:
+        has_example = any(kw in ans_lower for kw in [
+            "for example", "for instance", "e.g.", "such as", "an example is",
+            "class dog", "class car", "class animal", "class vehicle", "class b extends a", "class child extends parent"
+        ]) or ("{" in student_ans and "}" in student_ans and ("class" in ans_lower or "void" in ans_lower))
+
+        if has_example:
+            return {
+                "criterion": criterion_name,
+                "score": criterion_max,
+                "max_score": criterion_max,
+                "feedback": f"Provided a relevant code or conceptual example for {concept}."
+            }
+        else:
+            return {
+                "criterion": criterion_name,
+                "score": 0.0,
+                "max_score": criterion_max,
+                "feedback": f"No code or practical example was provided for {concept}."
             }
 
     # Criterion 3: Parent-child relationship / hierarchy (with semantic equivalence)
@@ -244,7 +378,7 @@ def evaluate_criterion_semantically(
                 "criterion": criterion_name,
                 "score": criterion_max,
                 "max_score": criterion_max,
-                "feedback": "Correctly states that both properties (variables) and methods (functions) are inherited."
+                "feedback": "Correctly states that both properties (variables) and methods (functions) are included."
             }
         elif has_props or has_methods:
             partial_score = round(criterion_max * 0.5, 1) if strictness != "flexible" else round(criterion_max * 0.75, 1)
@@ -259,40 +393,151 @@ def evaluate_criterion_semantically(
                 "criterion": criterion_name,
                 "score": 0.0,
                 "max_score": criterion_max,
-                "feedback": "Did not mention inheritance of properties or methods."
+                "feedback": "Did not mention properties or methods."
             }
 
-    # Helper to check if student answer actually mentions mechanics (not just the word 'inheritance')
-    def check_has_mechanics(text: str) -> bool:
-        t = text.lower()
-        return any(w in t for w in [
-            "class", "subclass", "superclass", "parent", "child", "base", "derived",
-            "acquire", "acquires", "reus", "extend", "extends", "property", "properties",
-            "method", "methods", "variable", "variables", "function", "functions"
-        ]) or ("inherits" in t and "inheritance" not in t) or ("inherit from" in t)
+    # Criterion 5: Data Hiding / Implementation Hiding / Essential Details (Abstraction / Encapsulation)
+    if any(k in c_lower for k in ["hiding", "essential", "implementation details", "data hiding"]):
+        has_hiding = any(k in ans_lower for k in ["hiding", "hide", "hides", "hidden", "internal details", "protect", "private"])
+        has_essential = any(k in ans_lower for k in ["essential", "important", "showing only", "show only", "relevant", "user need", "necessary"])
 
-    # Criterion 5: Definition / Concept
-    if any(k in c_lower for k in ["definition", "concept", "meaning", "define"]):
-        words = student_ans.split()
-        has_mechanics = check_has_mechanics(ans_lower)
-        has_oop_terms = any(t in ans_lower for t in ["oop", "object-oriented", "mechanism", "paradigm", "process", "principle"])
-
-        is_complete_def = (has_oop_terms and has_mechanics and ("class" in ans_lower or "subclass" in ans_lower)) or (len(words) >= 14 and has_mechanics and has_oop_terms)
-        is_partial_def = has_mechanics and any(t in ans_lower for t in ["allows", "is a", "concept", "inherit", "acquire", "get", "derive", "share", "mechanism"])
-        is_superficial_domain = any(t in ans_lower for t in ["java", "programming", "part", "language", "code"]) and not has_mechanics
-
-        if is_complete_def:
-            score = criterion_max
-            feedback = "Clear, accurate definition of inheritance."
-        elif is_partial_def:
-            score = round(criterion_max * 0.5, 1)
-            feedback = "Provides a working definition of inheritance."
-        elif is_superficial_domain:
-            score = round(criterion_max * 0.25, 1) if "inheritance" in ans_lower else round(criterion_max * 0.1, 1)
-            feedback = "Identifies Java domain connection, but does not provide a functional definition of inheritance."
+        if has_hiding and has_essential:
+            return {
+                "criterion": criterion_name,
+                "score": criterion_max,
+                "max_score": criterion_max,
+                "feedback": f"Fully explains hiding internal details and showing essential/important information."
+            }
+        elif has_hiding:
+            partial_score = round(criterion_max * 0.75, 1) if strictness == "flexible" else round(criterion_max * 0.6, 1)
+            return {
+                "criterion": criterion_name,
+                "score": partial_score,
+                "max_score": criterion_max,
+                "feedback": "Explains data/implementation hiding, but does not clearly describe presenting essential features."
+            }
+        elif has_essential:
+            partial_score = round(criterion_max * 0.75, 1) if strictness == "flexible" else round(criterion_max * 0.6, 1)
+            return {
+                "criterion": criterion_name,
+                "score": partial_score,
+                "max_score": criterion_max,
+                "feedback": "Mentions presenting essential/important information, but does not clearly describe data hiding."
+            }
         else:
-            score = 0.0
-            feedback = "No definition of inheritance provided."
+            return {
+                "criterion": criterion_name,
+                "score": 0.0,
+                "max_score": criterion_max,
+                "feedback": f"Did not explain data hiding or essential feature presentation for {concept}."
+            }
+
+    # Criterion 6: Bundling Data and Methods / Access Control (Encapsulation)
+    if any(k in c_lower for k in ["bundling", "wrapping", "capsule", "access control", "unit"]):
+        has_bundle = any(k in ans_lower for k in ["bundling", "bundle", "wrapping", "wrap", "binding", "bind", "single unit", "together"])
+        has_control = any(k in ans_lower for k in ["private", "public", "getter", "setter", "access modifier", "protect", "hiding"])
+
+        if has_bundle and has_control:
+            return {
+                "criterion": criterion_name,
+                "score": criterion_max,
+                "max_score": criterion_max,
+                "feedback": "Fully explains bundling data and methods with access control."
+            }
+        elif has_bundle or has_control:
+            partial_score = round(criterion_max * 0.6, 1)
+            return {
+                "criterion": criterion_name,
+                "score": partial_score,
+                "max_score": criterion_max,
+                "feedback": "Partially explains bundling data/methods and access control."
+            }
+        else:
+            return {
+                "criterion": criterion_name,
+                "score": 0.0,
+                "max_score": criterion_max,
+                "feedback": "Did not explain bundling data and methods or access control."
+            }
+
+    # Criterion 7: Definition / Concept (Generic & Dynamic)
+    if any(k in c_lower for k in ["definition", "concept", "meaning", "define", "core concept"]):
+        words = student_ans.split()
+
+        # Superficial answer check (e.g. "inheritance is a java part")
+        is_superficial = any(p.match(student_ans.strip()) for p in SUPERFICIAL_PATTERNS) or (
+            len(words) <= 5 and any(w in ans_lower for w in ["part", "thing", "code"]) and not any(
+                k in ans_lower for k in ["hiding", "essential", "important", "subclass", "parent", "bundling", "many forms", "overload", "override"]
+            )
+        )
+
+        if is_superficial:
+            score = round(criterion_max * 0.15, 1)
+            feedback = f"Identifies domain connection, but does not provide a functional definition of {concept}."
+            return {
+                "criterion": criterion_name,
+                "score": score,
+                "max_score": criterion_max,
+                "feedback": feedback
+            }
+
+        # Concept-specific definition checks
+        if "abstract" in concept or "abstract" in ans_lower:
+            has_hiding = any(k in ans_lower for k in ["hiding", "hide", "hides", "protect", "hidden"])
+            has_showing = any(k in ans_lower for k in ["showing", "show", "essential", "important", "display"])
+            if has_hiding and has_showing:
+                score = criterion_max
+                feedback = f"Clear, accurate definition of {concept}."
+            elif has_hiding or has_showing:
+                score = round(criterion_max * 0.6, 1)
+                feedback = f"Provides a working definition of {concept}."
+            else:
+                score = 0.0
+                feedback = f"No definition of {concept} provided."
+        elif "encapsulat" in concept or "capsulat" in ans_lower:
+            has_wrap = any(k in ans_lower for k in ["bundling", "bundle", "wrapping", "wrap", "binding", "single unit"])
+            has_hide = any(k in ans_lower for k in ["data hiding", "hiding", "private", "access modifier", "getter", "setter"])
+            if has_wrap and has_hide:
+                score = criterion_max
+                feedback = f"Clear, accurate definition of {concept}."
+            elif has_wrap or has_hide:
+                score = round(criterion_max * 0.6, 1)
+                feedback = f"Provides a working definition of {concept}."
+            else:
+                score = 0.0
+                feedback = f"No definition of {concept} provided."
+        elif "inherit" in concept or "inherit" in ans_lower:
+            has_hierarchy = any(k in ans_lower for k in ["class", "subclass", "superclass", "parent", "child", "base", "derived"])
+            has_acquire = any(k in ans_lower for k in ["acquire", "acquires", "get", "gets", "derive", "inherit", "reus", "extend"])
+            if has_hierarchy and has_acquire:
+                score = criterion_max
+                feedback = f"Clear, accurate definition of {concept}."
+            elif has_hierarchy or has_acquire:
+                score = round(criterion_max * 0.5, 1)
+                feedback = f"Provides a working definition of {concept}."
+            else:
+                score = 0.0
+                feedback = f"No definition of {concept} provided."
+        elif "polymorph" in concept or "polymorph" in ans_lower:
+            has_many = any(k in ans_lower for k in ["many forms", "multiple forms", "many form", "different forms"])
+            has_poly_mech = any(k in ans_lower for k in ["overload", "override", "compile time", "runtime", "interface"])
+            if has_many or has_poly_mech:
+                score = criterion_max if (has_many and has_poly_mech) else round(criterion_max * 0.7, 1)
+                feedback = f"Clear, accurate definition of {concept}."
+            else:
+                score = 0.0
+                feedback = f"No definition of {concept} provided."
+        else:
+            if len(words) >= 8 and any(k in ans_lower for k in ["means", "is a", "defined as", "refers to", "process of", "mechanism", "technique"]):
+                score = criterion_max
+                feedback = f"Clear, accurate definition of {concept}."
+            elif len(words) >= 4:
+                score = round(criterion_max * 0.5, 1)
+                feedback = f"Provides a working definition of {concept}."
+            else:
+                score = 0.0
+                feedback = f"No definition of {concept} provided."
+
         return {
             "criterion": criterion_name,
             "score": score,
@@ -300,63 +545,51 @@ def evaluate_criterion_semantically(
             "feedback": feedback
         }
 
-    # Criterion 6: Technical explanation / Mechanism
+    # Criterion 8: Technical explanation / Mechanism
     if any(k in c_lower for k in ["technical explanation", "mechanism", "how it works", "implementation"]):
         words = student_ans.split()
-        has_mechanics = check_has_mechanics(ans_lower)
-        has_hierarchy = check_term_match("child class", ans_lower) or check_term_match("subclass", ans_lower) or check_term_match("parent class", ans_lower) or check_term_match("superclass", ans_lower)
-        has_features = check_term_match("properties", ans_lower) or check_term_match("variables", ans_lower) or check_term_match("methods", ans_lower) or check_term_match("functions", ans_lower)
-
-        if not has_mechanics:
-            return {
-                "criterion": criterion_name,
-                "score": 0.0,
-                "max_score": criterion_max,
-                "feedback": "Did not provide a technical explanation or mechanism."
-            }
-        elif has_hierarchy and has_features:
-            return {
-                "criterion": criterion_name,
-                "score": criterion_max,
-                "max_score": criterion_max,
-                "feedback": "Fully explains the technical inheritance mechanism."
-            }
+        if len(words) >= 12 and any(k in ans_lower for k in ["class", "method", "interface", "abstract", "extend", "override", "private", "public"]):
+            score = criterion_max
+            feedback = f"Fully explains the technical mechanism of {concept}."
+        elif len(words) >= 6:
+            score = round(criterion_max * 0.5, 1) if strictness != "flexible" else round(criterion_max * 0.75, 1)
+            feedback = f"Partially explains the technical mechanism of {concept}."
         else:
-            partial_score = round(criterion_max * 0.5, 1) if strictness != "flexible" else round(criterion_max * 0.75, 1)
-            return {
-                "criterion": criterion_name,
-                "score": partial_score,
-                "max_score": criterion_max,
-                "feedback": "Partially explains the technical mechanism."
-            }
+            score = 0.0
+            feedback = f"Did not provide a technical explanation or mechanism for {concept}."
+        return {
+            "criterion": criterion_name,
+            "score": score,
+            "max_score": criterion_max,
+            "feedback": feedback
+        }
 
-    # Criterion 7: Accuracy & Completeness
+    # Criterion 9: Accuracy & Completeness
     if any(k in c_lower for k in ["accuracy & completeness", "completeness", "thoroughness"]):
         words = student_ans.split()
-        has_mechanics = check_has_mechanics(ans_lower)
-        if len(words) < 6 or not has_mechanics:
-            return {
-                "criterion": criterion_name,
-                "score": 0.0,
-                "max_score": criterion_max,
-                "feedback": "Answer has significant conceptual and technical gaps."
-            }
-        elif len(words) >= 12 and ("extends" in ans_lower or "oop" in ans_lower or "reus" in ans_lower):
+        if len(words) >= 12 and not any(p.match(student_ans.strip()) for p in SUPERFICIAL_PATTERNS):
             return {
                 "criterion": criterion_name,
                 "score": criterion_max,
                 "max_score": criterion_max,
-                "feedback": "Comprehensive and accurate explanation."
+                "feedback": f"Comprehensive and accurate explanation of {concept}."
             }
-        else:
+        elif len(words) >= 6:
             return {
                 "criterion": criterion_name,
                 "score": round(criterion_max * 0.5, 1),
                 "max_score": criterion_max,
-                "feedback": "Accurate but could include additional technical depth."
+                "feedback": f"Accurate but could include additional technical depth for {concept}."
+            }
+        else:
+            return {
+                "criterion": criterion_name,
+                "score": 0.0,
+                "max_score": criterion_max,
+                "feedback": f"Answer has significant conceptual and technical gaps regarding {concept}."
             }
 
-    # Criterion 8: General semantic evaluation using on-device ONNX embeddings or model answer
+    # Criterion 10: General semantic evaluation using on-device ONNX embeddings or model answer
     words = student_ans.split()
     if len(words) < 5 and not any(w in ans_lower for w in c_lower.split()):
         return {
@@ -368,7 +601,6 @@ def evaluate_criterion_semantically(
 
     try:
         embedder = get_embed_service()
-        # If model answer is available, compare against model answer content for that criterion
         target_text = model_ans if (model_ans and len(model_ans.split()) > 4) else criterion_name
         c_emb = embedder.generate_query_embedding(target_text)
         ans_emb = embedder.generate_query_embedding(student_ans)
@@ -591,7 +823,23 @@ class AssessmentEvaluatorService:
         if strictness not in ["strict", "balanced", "flexible"]:
             strictness = "balanced"
 
-        model_ans = getattr(q_item, "model_answer", None) or getattr(q_item, "expected_answer", None) or ""
+        raw_model = getattr(q_item, "model_answer", None) or getattr(q_item, "expected_answer", None) or ""
+        raw_rubric = getattr(q_item, "rubric", None) or rubric_guidance or ""
+
+        # Step 0: Integrity Check - Prevent cross-contamination between question topic and rubric/model answer
+        model_ans, effective_rubric, mismatch_detected, mismatch_reason = check_and_sanitize_rubric_and_model_answer(
+            question_text=q_item.question_text,
+            model_answer=raw_model,
+            rubric_str=raw_rubric,
+            max_marks=max_m,
+            topic=topic
+        )
+        if mismatch_detected:
+            logger.warning(
+                f"[CRITICAL RUBRIC MISMATCH] Question ID: {q_item.question_id}, Text: '{q_item.question_text}'. "
+                f"Reason: {mismatch_reason}. Realigning rubric and model answer."
+            )
+
         expected_concepts = getattr(q_item, "key_concepts", None) or []
         if isinstance(expected_concepts, str) and expected_concepts.strip():
             try:
@@ -602,7 +850,6 @@ class AssessmentEvaluatorService:
             expected_concepts = []
 
         # Parse teacher's rubric criteria
-        effective_rubric = getattr(q_item, "rubric", None) or rubric_guidance or ""
         criteria = parse_rubric_criteria(effective_rubric, max_m, expected_concepts)
 
         # Requirement: Empty answer handling (Test 5)
@@ -612,6 +859,7 @@ class AssessmentEvaluatorService:
                 for c in criteria
             ]
             return QuestionEvaluationResult(
+                question_id=q_item.question_id,
                 question_number=q_item.question_number,
                 page_number=q_item.page_number,
                 question_text=q_item.question_text,
@@ -635,6 +883,7 @@ class AssessmentEvaluatorService:
                 is_correct=False,
                 ideal_answer=model_ans or f"A complete answer should define and explain {q_item.question_text}.",
                 model_answer=model_ans,
+                rubric=effective_rubric,
                 criterion_scores=empty_criteria,
                 supported_points=[],
                 missing_points=[c["criterion"] for c in criteria],
@@ -653,6 +902,7 @@ class AssessmentEvaluatorService:
                 for c in criteria
             ]
             return QuestionEvaluationResult(
+                question_id=q_item.question_id,
                 question_number=q_item.question_number,
                 page_number=q_item.page_number,
                 question_text=q_item.question_text,
@@ -676,6 +926,7 @@ class AssessmentEvaluatorService:
                 is_correct=False,
                 ideal_answer=model_ans or f"A complete answer should define and explain {q_item.question_text}.",
                 model_answer=model_ans,
+                rubric=effective_rubric,
                 criterion_scores=injection_criteria,
                 supported_points=[],
                 missing_points=[c["criterion"] for c in criteria],
@@ -693,7 +944,9 @@ class AssessmentEvaluatorService:
                 criterion_max=c["max_score"],
                 student_ans=cleaned_ans,
                 model_ans=model_ans,
-                strictness=strictness
+                strictness=strictness,
+                question_text=q_item.question_text,
+                topic=topic
             )
             item = CriterionScoreItem(
                 criterion=c_res["criterion"],
@@ -782,15 +1035,18 @@ class AssessmentEvaluatorService:
             confidence = 0.82
 
         teacher_review_required = bool(
-            confidence < 0.85 or (0 < total_score < max_m * 0.5 and strictness == "strict")
+            confidence < 0.85 or (0 < total_score < max_m * 0.5 and strictness == "strict") or mismatch_detected
         )
 
         reasoning_str = (
             f"Rubric evaluation awarded {total_score}/{max_m} pts across {len(criterion_results)} criteria "
             f"({strictness} mode)."
         )
+        if mismatch_detected:
+            reasoning_str += f" [Rubric Realignment: Criteria realigned to match question concept '{q_item.question_text}'.]"
 
         return QuestionEvaluationResult(
+            question_id=q_item.question_id,
             question_number=q_item.question_number,
             page_number=q_item.page_number,
             question_text=q_item.question_text,
@@ -814,6 +1070,7 @@ class AssessmentEvaluatorService:
             is_correct=is_correct,
             ideal_answer=ideal_answer,
             model_answer=model_ans,
+            rubric=effective_rubric,
             criterion_scores=criterion_results,
             supported_points=supported_points,
             missing_points=missing_points,

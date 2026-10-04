@@ -64,6 +64,18 @@ export const TeacherDashboardPage: React.FC = () => {
   const [newStatus, setNewStatus] = useState<'published' | 'draft'>('published');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [assignToAll, setAssignToAll] = useState<boolean>(true);
+  const createEmptyQuestion = (num: number = 1) => ({
+    question_number: num,
+    question_text: '',
+    question_type: 'Subjective',
+    maximum_marks: 10,
+    topic: 'Computer Science',
+    rubric: '',
+    model_answer: '',
+    key_concepts: '',
+    strictness: 'balanced' as const,
+  });
+
   const [newQuestions, setNewQuestions] = useState<Array<{
     question_number: number;
     question_text: string;
@@ -74,30 +86,7 @@ export const TeacherDashboardPage: React.FC = () => {
     model_answer?: string;
     key_concepts?: string;
     strictness?: 'strict' | 'balanced' | 'flexible';
-  }>>([
-    {
-      question_number: 1,
-      question_text: '',
-      question_type: 'Subjective',
-      maximum_marks: 10,
-      topic: 'Computer Science',
-      rubric: 'Definition = 2, Parent-child relationship = 3, Properties/methods = 2, extends keyword = 2, Example = 1',
-      model_answer: 'Inheritance allows a child class to get properties and methods from a parent class using extends.',
-      key_concepts: 'Inheritance, Subclass, Superclass, Extends',
-      strictness: 'balanced',
-    },
-    {
-      question_number: 2,
-      question_text: '',
-      question_type: 'Short Answer',
-      maximum_marks: 10,
-      topic: 'Algorithms',
-      rubric: 'Definition = 3, Time Complexity = 4, Space Complexity = 3',
-      model_answer: '',
-      key_concepts: 'Algorithm, Complexity',
-      strictness: 'balanced',
-    },
-  ]);
+  }>>([createEmptyQuestion(1)]);
   const [creatingAssignment, setCreatingAssignment] = useState<boolean>(false);
 
   // Active Review State
@@ -312,6 +301,7 @@ export const TeacherDashboardPage: React.FC = () => {
       setNewDueDate('');
       setSelectedStudentIds([]);
       setAssignToAll(true);
+      setNewQuestions([createEmptyQuestion(1)]);
       loadDashboardData();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Failed to create assignment.');
@@ -1561,7 +1551,7 @@ export const TeacherDashboardPage: React.FC = () => {
 
                       <input
                         type="text"
-                        placeholder="Grading Rubric (e.g. Definition = 2, Parent-child = 3, Properties/methods = 2, extends = 2, Example = 1)..."
+                        placeholder="Grading Rubric (e.g. Definition = 3, Core Principle = 4, Example = 3)..."
                         value={q.rubric || ''}
                         onChange={e => {
                           const val = e.target.value;
@@ -1572,7 +1562,7 @@ export const TeacherDashboardPage: React.FC = () => {
 
                       <input
                         type="text"
-                        placeholder="Model / Expected Answer (e.g. Child class acquires properties and methods from parent class)..."
+                        placeholder="Model / Expected Answer (e.g. Concise explanation of the core concept and technical mechanics)..."
                         value={q.model_answer || ''}
                         onChange={e => {
                           const val = e.target.value;

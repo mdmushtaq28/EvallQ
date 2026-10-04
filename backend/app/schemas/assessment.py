@@ -18,6 +18,7 @@ class CriterionScoreItem(BaseModel):
 
 
 class ExtractedQuestionItem(BaseModel):
+    question_id: Optional[str] = None
     question_number: int
     page_number: int = 1
     question_text: str
@@ -56,6 +57,7 @@ class OCRVerifyResponse(BaseModel):
 
 
 class QuestionEvaluationResult(BaseModel):
+    question_id: Optional[str] = None
     question_number: int
     page_number: int = 1
     question_text: str
@@ -77,6 +79,7 @@ class QuestionEvaluationResult(BaseModel):
     confidence: Optional[float] = 0.95
     percentage: Optional[float] = None
     strictness: Optional[str] = "balanced"
+    rubric: Optional[str] = None
     criterion_scores: Optional[List[CriterionScoreItem]] = Field(default_factory=list)
     supported_points: Optional[List[str]] = Field(default_factory=list)
     missing_points: Optional[List[str]] = Field(default_factory=list)

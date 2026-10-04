@@ -10,8 +10,6 @@ import type {
 } from '../types';
 import { useBackendStatus } from '../hooks/useBackendStatus';
 import { api } from '../services/api';
-import { routeToTab, tabToRoute, isAuthRoute, navigateTo, isTeacherRoute, isStudentRoute } from '../lib/router';
-import { useAuth } from './AuthContext';
 
 interface AppContextType {
   activeTab: TabType;
@@ -92,42 +90,8 @@ const defaultTeacherUser: AuthUser = {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { role: authRole, user: authUser, profile: authProfile } = useAuth();
-  const [userRole, setUserRoleState] = useState<UserRole>(() => authRole || 'student');
-
-  // Keep AppContext role strictly in sync with verified Supabase Auth
-  useEffect(() => {
-    if (authRole) {
-      if (authRole !== userRole) {
-        setUserRoleState(authRole);
-      }
-      const path = typeof window !== 'undefined' ? window.location.pathname : '/';
-      if (authRole === 'teacher' && (path === '/' || isStudentRoute(path))) {
-        setActiveTabState('teacher-dashboard');
-      } else if (authRole === 'student' && isTeacherRoute(path)) {
-        setActiveTabState('dashboard');
-      }
-    }
-  }, [authRole, userRole]);
-
-  // Keep currentUser in sync with verified Supabase Auth profile
-  useEffect(() => {
-    if (authUser) {
-      setCurrentUser({
-        id: authUser.id,
-        name: authProfile?.full_name || authUser.user_metadata?.full_name || (authRole === 'teacher' ? 'Prof. Robert Chen' : 'Alex Rivera'),
-        email: authUser.email || '',
-        role: authRole === 'teacher' ? 'TEACHER' : 'STUDENT',
-      });
-    }
-  }, [authUser, authProfile, authRole]);
-
   const [activeTab, setActiveTabState] = useState<TabType>(() => {
     if (typeof window !== 'undefined') {
-      const path = window.location.pathname;
-      if (!isAuthRoute(path) && path !== '/') {
-        return routeToTab(path);
-      }
       const saved = localStorage.getItem('evallq_active_tab') as TabType;
       if (saved) return saved;
     }
@@ -138,27 +102,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveTabState(tab);
     if (typeof window !== 'undefined') {
       localStorage.setItem('evallq_active_tab', tab);
-      const targetRoute = tabToRoute(tab);
-      if (window.location.pathname !== targetRoute) {
-        navigateTo(targetRoute);
-      }
     }
   };
 
-  // Synchronize activeTab whenever the browser history or URL changes
-  useEffect(() => {
-    const handleLocationChange = () => {
-      const path = window.location.pathname;
-      if (!isAuthRoute(path)) {
-        const tab = routeToTab(path, userRole);
-        setActiveTabState(tab);
-        localStorage.setItem('evallq_active_tab', tab);
-      }
-    };
-
-    window.addEventListener('popstate', handleLocationChange);
-    return () => window.removeEventListener('popstate', handleLocationChange);
-  }, [userRole]);
+  const [userRole, setUserRoleState] = useState<UserRole>('student');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(defaultStudentUser);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [isAuthModalOpen, setAuthModalOpen] = useState<boolean>(false);
@@ -217,13 +164,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             return;
           }
         }
-        // Auto-login Alex Rivera only if no authenticated session exists and no auth role set
-        if (!authRole && !authUser) {
-          const res = await api.login({ email: 'student@evallq.ai', password: 'student123' });
-          if (res?.user) {
-            setCurrentUser(res.user);
-            setUserRoleState('student');
-          }
+        // Auto-login Alex Rivera by default so app is immediately usable
+        const res = await api.login({ email: 'student@evallq.ai', password: 'student123' });
+        if (res?.user) {
+          setCurrentUser(res.user);
+          setUserRoleState('student');
         }
       } catch (err) {
         console.warn('Backend auto-login on startup deferred:', err);
@@ -231,7 +176,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     initializeAuth();
-  }, [authRole, authUser]);
+  }, []);
 
   const login = async (email: string, password?: string, role?: string): Promise<boolean> => {
     try {
@@ -294,10 +239,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const setUserRole = (role: UserRole) => {
-    if (authRole && role !== authRole) {
-      console.warn(`Role change to ${role} prevented: User is authenticated as ${authRole}.`);
-      return;
-    }
     switchDemoUser(role);
   };
 

@@ -272,7 +272,7 @@ export const StudentResultPage: React.FC = () => {
             Detailed Question Breakdown ({result.questions?.length || 0} Questions)
           </h3>
 
-          {result.questions?.map((q: any, idx: number) => {
+          {result.questions?.map((q: any) => {
             const hasTeacherScore = q.teacher_marks !== null && q.teacher_marks !== undefined;
             const qScore = hasTeacherScore ? q.teacher_marks : (q.suggested_marks ?? 0);
             const aiScore = q.ai_score ?? q.suggested_marks ?? 0;
@@ -281,7 +281,7 @@ export const StudentResultPage: React.FC = () => {
 
             return (
               <div
-                key={idx}
+                key={q.question_id || q.id || `q-${q.question_number}`}
                 className="p-6 rounded-2xl bg-[#0A0A0A] border border-white/[0.08] space-y-4"
               >
                 {/* Question Header */}
@@ -293,6 +293,11 @@ export const StudentResultPage: React.FC = () => {
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-white/[0.04] text-[#9A9A9A]">
                       {q.topic}
                     </span>
+                    {q.question_id && (
+                      <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[9px] font-mono text-[#666] bg-white/[0.02] border border-white/[0.04]">
+                        ID: {q.question_id.slice(0, 8)}
+                      </span>
+                    )}
                     {q.strictness && (
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-mono uppercase bg-[#8052FF]/10 text-[#8052FF] border border-[#8052FF]/20">
                         {q.strictness} mode
