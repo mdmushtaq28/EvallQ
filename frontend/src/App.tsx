@@ -28,10 +28,9 @@ import { Cpu } from 'lucide-react';
 
 interface MainLayoutProps {
   onNavigate: (route: string) => void;
-  currentPath: string;
 }
 
-const MainLayout: React.FC<MainLayoutProps> = ({ onNavigate, currentPath }) => {
+const MainLayout: React.FC<MainLayoutProps> = ({ onNavigate }) => {
   const { theme } = useTheme();
   const { role: authRole } = useAuth();
   const {
@@ -61,12 +60,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onNavigate, currentPath }) => {
   }, [authRole, activeTab, setActiveTab]);
 
   const renderActivePage = () => {
-    // If route is /profile or tab is profile
-    if (currentPath === '/profile' || activeTab === 'profile') {
-      return <ProfilePage onNavigate={onNavigate} />;
-    }
-
     switch (activeTab) {
+      case 'profile':
+        return <ProfilePage onNavigate={onNavigate} />;
       case 'dashboard':
         return <DashboardPage />;
       case 'student-assignments':
@@ -149,7 +145,10 @@ const AppRouter: React.FC = () => {
   }, []);
 
   const navigate = (path: string) => {
-    window.history.pushState({}, '', path);
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+      window.dispatchEvent(new Event('popstate'));
+    }
     setCurrentPath(path);
   };
 
@@ -199,7 +198,7 @@ const AppRouter: React.FC = () => {
   }
 
   // 5. Authenticated & Verified: Render Main App with RBAC
-  return <MainLayout onNavigate={navigate} currentPath={currentPath} />;
+  return <MainLayout onNavigate={navigate} />;
 };
 
 export default function App() {

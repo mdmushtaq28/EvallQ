@@ -30,7 +30,7 @@ interface SidebarProps {
   onNavigate?: (route: string) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse, onNavigate }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse }) => {
   const { theme, setTheme, toggleTheme } = useTheme();
   const { user, profile, role: authRole, logout: supabaseLogout } = useAuth();
   const {
@@ -246,11 +246,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse, o
             <button
               key={item.id}
               onClick={() => {
-                if (item.id === 'profile' && onNavigate) {
-                  onNavigate('/profile');
-                } else {
-                  setActiveTab(item.id);
-                }
+                setActiveTab(item.id);
               }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all duration-150 group relative tracking-tight ${
                 isActive
@@ -372,7 +368,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse, o
             : 'bg-slate-50 border-slate-200'
         }`}>
           <div
-            onClick={() => (onNavigate ? onNavigate('/profile') : setActiveTab('profile'))}
+            onClick={() => setActiveTab('profile')}
             className="flex items-center justify-between mb-2 cursor-pointer group"
             title="Click to view profile"
           >

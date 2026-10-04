@@ -10,6 +10,7 @@ import type {
 } from '../types';
 import { useBackendStatus } from '../hooks/useBackendStatus';
 import { api } from '../services/api';
+import { routeToTab, tabToRoute, isAuthRoute, navigateTo } from '../lib/router';
 
 interface AppContextType {
   activeTab: TabType;
@@ -90,8 +91,14 @@ const defaultTeacherUser: AuthUser = {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [userRole, setUserRoleState] = useState<UserRole>('student');
+
   const [activeTab, setActiveTabState] = useState<TabType>(() => {
     if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      if (!isAuthRoute(path) && path !== '/') {
+        return routeToTab(path);
+      }
       const saved = localStorage.getItem('evallq_active_tab') as TabType;
       if (saved) return saved;
     }
@@ -102,10 +109,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveTabState(tab);
     if (typeof window !== 'undefined') {
       localStorage.setItem('evallq_active_tab', tab);
+      const targetRoute = tabToRoute(tab);
+      if (window.location.pathname !== targetRoute) {
+        navigateTo(targetRoute);
+      }
     }
   };
 
-  const [userRole, setUserRoleState] = useState<UserRole>('student');
+  // Synchronize activeTab whenever the browser history or URL changes
+  useEffect(() => {
+    const handleLocationChange = () => {
+      const path = window.location.pathname;
+      if (!isAuthRoute(path)) {
+        const tab = routeToTab(path, userRole);
+        setActiveTabState(tab);
+        localStorage.setItem('evallq_active_tab', tab);
+      }
+    };
+
+    window.addEventListener('popstate', handleLocationChange);
+    return () => window.removeEventListener('popstate', handleLocationChange);
+  }, [userRole]);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(defaultStudentUser);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [isAuthModalOpen, setAuthModalOpen] = useState<boolean>(false);

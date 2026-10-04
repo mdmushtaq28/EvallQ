@@ -15,15 +15,15 @@ interface HeaderProps {
   onNavigate?: (route: string) => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onNavigate }) => {
+export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const { theme } = useTheme();
   const { user, profile, role: authRole } = useAuth();
   const {
     activeTab,
+    setActiveTab,
     userRole,
     setUserRole,
     currentUser,
-    setAuthModalOpen,
     backendConnected,
     backendLoading,
     retryBackendConnection,
@@ -164,7 +164,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onNavigate }) =
 
         {/* Current User Quick Badge */}
         <button
-          onClick={() => (onNavigate ? onNavigate('/profile') : setAuthModalOpen(true))}
+          onClick={() => setActiveTab('profile')}
           className={`flex items-center gap-2 px-2.5 py-1 rounded-full border transition-colors text-xs ${
             theme === 'dark'
               ? 'bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.08] text-white'
