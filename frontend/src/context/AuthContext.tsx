@@ -74,13 +74,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data) {
+        const rawRole = (data.role || currentUser.user_metadata?.role || 'student').toLowerCase();
+        const roleNormalized: UserRole = rawRole === 'teacher' ? 'teacher' : 'student';
         return {
           id: data.id,
-          full_name: data.full_name || metadataName || 'EvallQ User',
+          full_name: data.name || data.full_name || metadataName || 'EvallQ User',
           email: data.email || currentUser.email || '',
-          role: (data.role?.toLowerCase() as UserRole) || metadataRole,
-          email_verified: Boolean(data.email_verified || isConfirmed),
-          avatar_url: data.avatar_url || null,
+          role: roleNormalized,
+          email_verified: Boolean(data.email_confirmed_at || data.email_verified || isConfirmed),
+          avatar_url: data.avatar || data.avatar_url || null,
           created_at: data.created_at,
           updated_at: data.updated_at,
         };
@@ -89,9 +91,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // If profiles table trigger hasn't populated yet, attempt safe insert or fallback
       const fallbackProfile: UserProfile = {
         id: currentUser.id,
-        full_name: metadataName || 'EvallQ User',
+        full_name: metadataName || (metadataRole === 'teacher' ? 'Prof. Robert Chen' : 'Alex Rivera'),
         email: currentUser.email || '',
-        role: metadataRole,
+        role: metadataRole === 'teacher' ? 'teacher' : 'student',
         email_verified: isConfirmed,
         avatar_url: currentUser.user_metadata?.avatar_url || null,
         created_at: currentUser.created_at,
@@ -101,10 +103,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         await supabase.from('profiles').upsert({
           id: currentUser.id,
-          full_name: fallbackProfile.full_name,
+          name: fallbackProfile.full_name,
           email: fallbackProfile.email,
-          role: fallbackProfile.role,
-          email_verified: fallbackProfile.email_verified,
+          role: fallbackProfile.role.toUpperCase(),
+          email_confirmed_at: isConfirmed ? new Date().toISOString() : null,
         });
       } catch (upsertErr) {
         // Non-blocking if table not yet migrated

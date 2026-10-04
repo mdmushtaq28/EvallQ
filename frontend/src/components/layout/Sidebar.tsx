@@ -27,21 +27,20 @@ import type { TabType } from '../../types';
 interface SidebarProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
+  role?: 'teacher' | 'student';
   onNavigate?: (route: string) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse, role: propRole }) => {
   const { theme, setTheme, toggleTheme } = useTheme();
   const { user, profile, role: authRole, logout: supabaseLogout } = useAuth();
   const {
     activeTab,
     setActiveTab,
-    userRole,
-    currentUser,
     setAuthModalOpen,
   } = useApp();
 
-  const effectiveRole = authRole || userRole;
+  const effectiveRole = propRole || authRole || 'student';
 
   const studentNavigationItems: Array<{
     id: TabType;
@@ -227,7 +226,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
             <span className={`text-[10px] font-mono uppercase tracking-wider ${
               theme === 'dark' ? 'text-[#9A9A9A]' : 'text-slate-500'
             }`}>
-              {userRole === 'teacher' ? 'Instructor Portal' : 'Student Portal'}
+              {effectiveRole === 'teacher' ? 'Instructor Portal' : 'Student Portal'}
             </span>
           </div>
           <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${
@@ -380,12 +379,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
                 <p className={`text-xs font-medium truncate group-hover:text-[#8052FF] transition-colors ${
                   theme === 'dark' ? 'text-white' : 'text-slate-900'
                 }`}>
-                  {profile?.full_name || user?.user_metadata?.full_name || currentUser?.name || (effectiveRole === 'teacher' ? 'Prof. Robert Chen' : 'Alex Rivera')}
+                  {profile?.full_name || user?.user_metadata?.full_name || (effectiveRole === 'teacher' ? 'Prof. Robert Chen' : 'Alex Rivera')}
                 </p>
                 <p className={`text-[10px] font-mono truncate ${
                   theme === 'dark' ? 'text-[#777]' : 'text-slate-400'
                 }`}>
-                  {profile?.email || user?.email || currentUser?.email || (effectiveRole === 'teacher' ? 'teacher@evallq.ai' : 'student@evallq.ai')}
+                  {profile?.email || user?.email || (effectiveRole === 'teacher' ? 'teacher@evallq.ai' : 'student@evallq.ai')}
                 </p>
               </div>
             </div>

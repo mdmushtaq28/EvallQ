@@ -23,6 +23,71 @@ export const TAB_TO_ROUTE: Record<TabType, string> = {
 };
 
 /**
+ * Teacher-specific routes (forbidden for students)
+ */
+export const TEACHER_ROUTES = [
+  '/teacher',
+  '/teacher/dashboard',
+  '/teacher-dashboard',
+  '/teacher/assignments',
+  '/teacher-assignments',
+  '/teacher/review',
+  '/teacher-review',
+  '/teacher/analytics',
+  '/teacher-analytics',
+];
+
+/**
+ * Student-specific routes (forbidden for teachers)
+ */
+export const STUDENT_ROUTES = [
+  '/dashboard',
+  '/assignments',
+  '/student-assignments',
+  '/my-assignments',
+  '/solve',
+  '/student-solve',
+  '/results',
+  '/student-result',
+  '/my-results',
+  '/tutor',
+  '/ai-tutor',
+  '/study',
+  '/study-materials',
+  '/focus',
+  '/focus-mode',
+  '/progress',
+  '/analytics',
+  '/my-progress',
+];
+
+/**
+ * Auth-only routes that render outside authenticated layouts.
+ */
+export const AUTH_ROUTES = [
+  '/login',
+  '/signup',
+  '/verify-email',
+  '/forgot-password',
+  '/reset-password',
+];
+
+export function isAuthRoute(pathname: string): boolean {
+  const clean = pathname.toLowerCase().replace(/\/+$/, '') || '/';
+  return AUTH_ROUTES.includes(clean);
+}
+
+export function isTeacherRoute(pathname: string): boolean {
+  const clean = pathname.toLowerCase().replace(/\/+$/, '') || '/';
+  return TEACHER_ROUTES.includes(clean) || clean.startsWith('/teacher');
+}
+
+export function isStudentRoute(pathname: string): boolean {
+  const clean = pathname.toLowerCase().replace(/\/+$/, '') || '/';
+  return STUDENT_ROUTES.includes(clean);
+}
+
+/**
  * Known route aliases and path mappings to TabType.
  */
 const ROUTE_TO_TAB: Record<string, TabType> = {
@@ -64,29 +129,26 @@ const ROUTE_TO_TAB: Record<string, TabType> = {
 };
 
 /**
- * Auth-only routes that render outside MainLayout.
- */
-export const AUTH_ROUTES = [
-  '/login',
-  '/signup',
-  '/verify-email',
-  '/forgot-password',
-  '/reset-password',
-];
-
-export function isAuthRoute(pathname: string): boolean {
-  const clean = pathname.toLowerCase().replace(/\/+$/, '') || '/';
-  return AUTH_ROUTES.includes(clean);
-}
-
-/**
- * Convert any browser pathname to its corresponding TabType.
+ * Convert any browser pathname to its corresponding TabType with strict role validation.
  */
 export function routeToTab(pathname: string, userRole?: string): TabType {
   const clean = pathname.toLowerCase().replace(/\/+$/, '') || '/';
-  if (clean === '/' && userRole === 'teacher') {
+  
+  // Default home per role
+  if (clean === '/') {
+    return userRole === 'teacher' ? 'teacher-dashboard' : 'dashboard';
+  }
+
+  // Student trying to access teacher route -> redirect to student dashboard
+  if (userRole === 'student' && isTeacherRoute(clean)) {
+    return 'dashboard';
+  }
+
+  // Teacher trying to access student-only route -> redirect to teacher dashboard
+  if (userRole === 'teacher' && isStudentRoute(clean)) {
     return 'teacher-dashboard';
   }
+
   return ROUTE_TO_TAB[clean] || (userRole === 'teacher' ? 'teacher-dashboard' : 'dashboard');
 }
 

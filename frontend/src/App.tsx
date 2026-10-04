@@ -25,14 +25,19 @@ import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import { ProfilePage } from './pages/auth/ProfilePage';
 import { Cpu } from 'lucide-react';
+import { isTeacherRoute, isStudentRoute } from './lib/router';
 
-interface MainLayoutProps {
+interface RoleAppProps {
   onNavigate: (route: string) => void;
 }
 
-const MainLayout: React.FC<MainLayoutProps> = ({ onNavigate }) => {
+/**
+ * TEACHER APPLICATION FRONTEND
+ * Exclusively renders Teacher Dashboard, Teacher Navigation, Rubric & Assignment Authoring,
+ * Submission Review Queue, and Class Intelligence.
+ */
+const TeacherApp: React.FC<RoleAppProps> = ({ onNavigate }) => {
   const { theme } = useTheme();
-  const { role: authRole } = useAuth();
   const {
     activeTab,
     setActiveTab,
@@ -40,31 +45,102 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onNavigate }) => {
     toggleSidebar,
     isAuthModalOpen,
     setAuthModalOpen,
-    userRole,
-    setUserRole,
   } = useApp();
 
-  // Keep AppContext userRole in sync with verified Supabase authRole
+  // Role Protection: Ensure teacher starts on teacher dashboard and cannot be on student-only routes
   useEffect(() => {
-    if (authRole && authRole !== userRole) {
-      setUserRole(authRole);
+    const path = window.location.pathname;
+    if (path === '/' || isStudentRoute(path)) {
+      setActiveTab('teacher-dashboard');
     }
-  }, [authRole, userRole, setUserRole]);
+  }, [setActiveTab]);
 
-  // Role-Based Access Control (RBAC): Prevent students from accessing teacher-only views
-  useEffect(() => {
-    const isTeacherTab = ['teacher-dashboard', 'teacher-assignments', 'teacher-review', 'teacher-analytics'].includes(activeTab);
-    if (authRole === 'student' && isTeacherTab) {
-      setActiveTab('dashboard');
-    }
-  }, [authRole, activeTab, setActiveTab]);
-
-  const renderActivePage = () => {
+  const renderTeacherPage = () => {
     switch (activeTab) {
       case 'profile':
         return <ProfilePage onNavigate={onNavigate} />;
-      case 'dashboard':
-        return <DashboardPage />;
+      case 'settings':
+        return <SettingsPage />;
+      case 'assessment':
+        return <AssessmentPage />;
+      case 'teacher-dashboard':
+      case 'teacher-assignments':
+      case 'teacher-review':
+      case 'teacher-analytics':
+      default:
+        return <TeacherDashboardPage />;
+    }
+  };
+
+  return (
+    <div className={`flex h-screen w-screen overflow-hidden ${
+      theme === 'dark' ? 'bg-black text-white' : 'bg-[#F8FAFC] text-slate-900'
+    } font-sans selection:bg-[#8052FF] selection:text-white transition-colors duration-200`}>
+      {/* Teacher Navigation Sidebar */}
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={toggleSidebar}
+        role="teacher"
+        onNavigate={onNavigate}
+      />
+
+      {/* Main Teacher Workspace Column */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Teacher Header */}
+        <Header
+          sidebarCollapsed={sidebarCollapsed}
+          onToggleSidebar={toggleSidebar}
+          role="teacher"
+        />
+
+        {/* Scrollable Teacher Page Content */}
+        <main className={`flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 ${
+          theme === 'dark' ? 'bg-black text-white' : 'bg-[#F8FAFC] text-slate-900'
+        }`}>
+          {renderTeacherPage()}
+        </main>
+      </div>
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onNavigate={onNavigate}
+      />
+    </div>
+  );
+};
+
+/**
+ * STUDENT APPLICATION FRONTEND
+ * Exclusively renders Student Dashboard, Course Assignments, Assignment Solver,
+ * Evaluated Results, AI Tutor, Smart Study Materials, Focus Mode, and Analytics.
+ */
+const StudentApp: React.FC<RoleAppProps> = ({ onNavigate }) => {
+  const { theme } = useTheme();
+  const {
+    activeTab,
+    setActiveTab,
+    sidebarCollapsed,
+    toggleSidebar,
+    isAuthModalOpen,
+    setAuthModalOpen,
+  } = useApp();
+
+  // Role Protection: Prevent students from accessing any teacher-only routes
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (isTeacherRoute(path)) {
+      setActiveTab('dashboard');
+    }
+  }, [setActiveTab]);
+
+  const renderStudentPage = () => {
+    switch (activeTab) {
+      case 'profile':
+        return <ProfilePage onNavigate={onNavigate} />;
+      case 'settings':
+        return <SettingsPage />;
       case 'student-assignments':
         return <StudentAssignmentsPage />;
       case 'student-solve':
@@ -79,17 +155,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onNavigate }) => {
         return <FocusModePage />;
       case 'assessment':
         return <AssessmentPage />;
-      case 'teacher-dashboard':
-      case 'teacher-assignments':
-      case 'teacher-review':
-      case 'teacher-analytics':
-        return <TeacherDashboardPage />;
       case 'analytics':
         return <AnalyticsPage />;
-      case 'settings':
-        return <SettingsPage />;
+      case 'dashboard':
       default:
-        return authRole === 'teacher' ? <TeacherDashboardPage /> : <DashboardPage />;
+        return <DashboardPage />;
     }
   };
 
@@ -97,27 +167,28 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onNavigate }) => {
     <div className={`flex h-screen w-screen overflow-hidden ${
       theme === 'dark' ? 'bg-black text-white' : 'bg-[#F8FAFC] text-slate-900'
     } font-sans selection:bg-[#8052FF] selection:text-white transition-colors duration-200`}>
-      {/* Navigation Sidebar */}
+      {/* Student Navigation Sidebar */}
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebar}
+        role="student"
         onNavigate={onNavigate}
       />
 
-      {/* Main Workspace Column */}
+      {/* Main Student Workspace Column */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Top Header */}
+        {/* Student Header */}
         <Header
           sidebarCollapsed={sidebarCollapsed}
           onToggleSidebar={toggleSidebar}
-          onNavigate={onNavigate}
+          role="student"
         />
 
-        {/* Scrollable Page Content */}
+        {/* Scrollable Student Page Content */}
         <main className={`flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 ${
           theme === 'dark' ? 'bg-black text-white' : 'bg-[#F8FAFC] text-slate-900'
         }`}>
-          {renderActivePage()}
+          {renderStudentPage()}
         </main>
       </div>
 
@@ -133,7 +204,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onNavigate }) => {
 
 const AppRouter: React.FC = () => {
   const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname);
-  const { loading, isAuthenticated, isEmailVerified } = useAuth();
+  const { loading, isAuthenticated, isEmailVerified, role } = useAuth();
 
   // Listen to browser forward/back buttons
   useEffect(() => {
@@ -152,7 +223,7 @@ const AppRouter: React.FC = () => {
     setCurrentPath(path);
   };
 
-  // 1. Loading splash: avoids flickering during session restoration
+  // 1. Loading splash: prevents flickering or premature wrong-role rendering during session restoration
   if (loading) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-black text-white">
@@ -197,8 +268,15 @@ const AppRouter: React.FC = () => {
     return <VerifyEmailPage onNavigate={navigate} />;
   }
 
-  // 5. Authenticated & Verified: Render Main App with RBAC
-  return <MainLayout onNavigate={navigate} />;
+  // 5. Two Distinct Role-Based Frontends
+  // Renders strictly according to verified Supabase profile role
+  const effectiveRole = role === 'teacher' ? 'teacher' : 'student';
+
+  if (effectiveRole === 'teacher') {
+    return <TeacherApp onNavigate={navigate} />;
+  }
+
+  return <StudentApp onNavigate={navigate} />;
 };
 
 export default function App() {
