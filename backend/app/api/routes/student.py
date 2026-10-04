@@ -477,9 +477,10 @@ async def get_student_submission_result(
     question_results: List[QuestionEvaluationResult] = []
     for q in submission.questions:
         effective_marks = q.teacher_marks if q.teacher_marks is not None else q.suggested_marks
-        q_is_correct = bool(q.rubric_match != "Incorrect" and effective_marks and effective_marks > 0)
-        # Requirement 9: If score is 0 and is_correct is false, never provide strengths claiming correctness
-        clean_strengths = (q.strengths or "") if (q_is_correct and effective_marks > 0) else ""
+        q_is_correct = bool(q.rubric_match == "Complete" or (effective_marks is not None and effective_marks >= 0.85 * q.maximum_marks))
+        # Requirement 9: If score is 0, never provide strengths
+        clean_strengths = (q.strengths or "") if (effective_marks and effective_marks > 0 and q.rubric_match != "Incorrect") else ""
+        q_pct = round((effective_marks / q.maximum_marks * 100.0), 1) if (effective_marks is not None and q.maximum_marks > 0) else 0.0
 
         question_results.append(
             QuestionEvaluationResult(
@@ -499,7 +500,9 @@ async def get_student_submission_result(
                 mistakes=q.mistakes or "",
                 learning_gap=q.learning_gap or "",
                 is_correct=q_is_correct,
-                ideal_answer=""
+                ideal_answer="",
+                confidence=0.95,
+                percentage=q_pct,
             )
         )
 

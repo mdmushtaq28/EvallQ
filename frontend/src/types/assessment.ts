@@ -55,6 +55,8 @@ export interface QuestionEvaluationResult {
   learning_gap: string;
   is_correct?: boolean;
   ideal_answer?: string;
+  confidence?: number;
+  percentage?: number;
 }
 
 export interface TopicPerformanceItem {

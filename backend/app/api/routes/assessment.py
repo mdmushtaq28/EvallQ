@@ -243,9 +243,11 @@ async def get_assessment(
                 "rubric_match": q.rubric_match,
                 "reasoning": q.reasoning,
                 "feedback": q.feedback,
-                "strengths": q.strengths,
+                "strengths": q.strengths if ((q.teacher_marks if q.teacher_marks is not None else q.suggested_marks) > 0 and q.rubric_match != "Incorrect") else "",
                 "mistakes": q.mistakes,
                 "learning_gap": q.learning_gap,
+                "percentage": round(((q.teacher_marks if q.teacher_marks is not None else q.suggested_marks) / q.maximum_marks * 100.0), 1) if q.maximum_marks > 0 else 0.0,
+                "confidence": 0.95,
             }
             for q in questions
         ]

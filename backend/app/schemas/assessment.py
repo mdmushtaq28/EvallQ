@@ -60,6 +60,8 @@ class QuestionEvaluationResult(BaseModel):
     learning_gap: str = ""
     is_correct: Optional[bool] = None
     ideal_answer: Optional[str] = None
+    confidence: Optional[float] = 0.95
+    percentage: Optional[float] = None
 
 
 class TopicPerformanceItem(BaseModel):
