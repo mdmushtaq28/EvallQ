@@ -41,38 +41,83 @@ def create_access_token(user_id: str, email: str, role: str, expires_in_seconds:
 
 def verify_access_token(token: str) -> Optional[Dict[str, Any]]:
     """
-    Validates HMAC signature and expiration timestamp. Returns payload if valid, None otherwise.
+    Validates token signature and expiration timestamp.
+    Supports both:
+    1. Standard Supabase 3-part JWT (header.payload.signature)
+    2. Local 2-part HMAC token (payload.signature)
     """
     if not token or "." not in token:
         return None
     try:
         parts = token.strip().split(".")
-        if len(parts) != 2:
-            return None
-        payload_b64, signature = parts
 
-        # Verify HMAC signature
-        expected_sig = hmac.new(
-            settings.SECRET_KEY.encode("utf-8"),
-            payload_b64.encode("utf-8"),
-            hashlib.sha256
-        ).hexdigest()
+        # Case 1: Standard Supabase 3-part JWT
+        if len(parts) == 3:
+            header_b64, payload_b64, signature_b64 = parts
 
-        if not hmac.compare_digest(signature, expected_sig):
-            return None
+            # Decode payload
+            rem = len(payload_b64) % 4
+            padded_b64 = payload_b64 + ("=" * (4 - rem) if rem > 0 else "")
+            payload_bytes = base64.urlsafe_b64decode(padded_b64)
+            payload = json.loads(payload_bytes.decode("utf-8"))
 
-        # Decode payload
-        # Add padding back if necessary
-        rem = len(payload_b64) % 4
-        padded_b64 = payload_b64 + ("=" * (4 - rem) if rem > 0 else "")
-        payload_bytes = base64.urlsafe_b64decode(padded_b64)
-        payload = json.loads(payload_bytes.decode("utf-8"))
+            # Check expiration
+            if payload.get("exp", 0) < int(time.time()):
+                return None
 
-        # Check expiration
-        if payload.get("exp", 0) < int(time.time()):
-            return None
+            # If Supabase JWT Secret is configured, verify HMAC signature
+            if settings.SUPABASE_JWT_SECRET:
+                signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+                expected_sig = hmac.new(
+                    settings.SUPABASE_JWT_SECRET.encode("utf-8"),
+                    signing_input,
+                    hashlib.sha256
+                ).digest()
+                expected_sig_b64 = base64.urlsafe_b64encode(expected_sig).decode("utf-8").rstrip("=")
+                if not hmac.compare_digest(signature_b64, expected_sig_b64):
+                    return None
 
-        return payload
+            user_meta = payload.get("user_metadata") or {}
+            app_meta = payload.get("app_metadata") or {}
+            role_val = (user_meta.get("role") or app_meta.get("role") or "student").upper()
+            full_name = user_meta.get("full_name") or user_meta.get("name") or payload.get("email") or "EvallQ User"
+
+            return {
+                "sub": payload.get("sub"),
+                "email": payload.get("email", ""),
+                "role": role_val,
+                "name": full_name,
+                "exp": payload.get("exp"),
+                "is_supabase": True,
+            }
+
+        # Case 2: Local 2-part HMAC token
+        if len(parts) == 2:
+            payload_b64, signature = parts
+
+            # Verify HMAC signature
+            expected_sig = hmac.new(
+                settings.SECRET_KEY.encode("utf-8"),
+                payload_b64.encode("utf-8"),
+                hashlib.sha256
+            ).hexdigest()
+
+            if not hmac.compare_digest(signature, expected_sig):
+                return None
+
+            # Decode payload
+            rem = len(payload_b64) % 4
+            padded_b64 = payload_b64 + ("=" * (4 - rem) if rem > 0 else "")
+            payload_bytes = base64.urlsafe_b64decode(padded_b64)
+            payload = json.loads(payload_bytes.decode("utf-8"))
+
+            # Check expiration
+            if payload.get("exp", 0) < int(time.time()):
+                return None
+
+            return payload
+
+        return None
     except Exception:
         return None
 
@@ -84,7 +129,7 @@ async def get_current_user(
 ) -> User:
     """
     FastAPI dependency extracting and authenticating the user from the Bearer token or X-Auth-Token header.
-    Raises 401 Unauthorized if invalid or missing.
+    Supports both Supabase JWT tokens and local tokens. Automatically syncs Supabase user accounts.
     """
     token: Optional[str] = None
     if credentials:
@@ -109,6 +154,31 @@ async def get_current_user(
 
     user_id = payload.get("sub")
     user = db.query(User).filter(User.id == user_id).first()
+
+    # If user authenticated with Supabase but not yet synced locally, auto-sync
+    if not user and payload.get("is_supabase") and user_id:
+        # Check by email first in case user was pre-seeded
+        email_val = payload.get("email", "").strip().lower()
+        if email_val:
+            user = db.query(User).filter(User.email == email_val).first()
+
+        if user:
+            # Update user id to match Supabase sub UUID
+            user.id = user_id
+            db.commit()
+            db.refresh(user)
+        else:
+            user = User(
+                id=user_id,
+                name=payload.get("name") or "EvallQ User",
+                email=email_val or f"{user_id}@evallq.ai",
+                password_hash="supabase_auth_managed",
+                role=payload.get("role") or "STUDENT",
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

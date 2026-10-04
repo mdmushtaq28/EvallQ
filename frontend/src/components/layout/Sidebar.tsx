@@ -21,23 +21,27 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import type { TabType } from '../../types';
 
 interface SidebarProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
+  onNavigate?: (route: string) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse, onNavigate }) => {
   const { theme, setTheme, toggleTheme } = useTheme();
+  const { user, profile, role: authRole, logout: supabaseLogout } = useAuth();
   const {
     activeTab,
     setActiveTab,
     userRole,
     currentUser,
-    logout,
     setAuthModalOpen,
   } = useApp();
+
+  const effectiveRole = authRole || userRole;
 
   const studentNavigationItems: Array<{
     id: TabType;
@@ -91,6 +95,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
       icon: <BarChart3 className="w-4 h-4" />,
     },
     {
+      id: 'profile',
+      label: 'My Profile',
+      icon: <User className="w-4 h-4" />,
+    },
+    {
       id: 'settings',
       label: 'Settings',
       icon: <Settings className="w-4 h-4" />,
@@ -133,13 +142,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
       badge: 'Scan',
     },
     {
+      id: 'profile',
+      label: 'My Profile',
+      icon: <User className="w-4 h-4" />,
+    },
+    {
       id: 'settings',
       label: 'Settings',
       icon: <Settings className="w-4 h-4" />,
     },
   ];
 
-  const navigationItems = userRole === 'teacher' ? teacherNavigationItems : studentNavigationItems;
+  const navigationItems = effectiveRole === 'teacher' ? teacherNavigationItems : studentNavigationItems;
 
   return (
     <aside
@@ -231,7 +245,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                if (item.id === 'profile' && onNavigate) {
+                  onNavigate('/profile');
+                } else {
+                  setActiveTab(item.id);
+                }
+              }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all duration-150 group relative tracking-tight ${
                 isActive
                   ? 'bg-[#8052FF] text-white shadow-sm font-medium'
@@ -351,21 +371,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
             ? 'bg-[#0A0A0A] border-white/[0.08]'
             : 'bg-slate-50 border-slate-200'
         }`}>
-          <div className="flex items-center justify-between mb-2">
+          <div
+            onClick={() => (onNavigate ? onNavigate('/profile') : setActiveTab('profile'))}
+            className="flex items-center justify-between mb-2 cursor-pointer group"
+            title="Click to view profile"
+          >
             <div className="flex items-center gap-2 overflow-hidden">
               <div className="w-7 h-7 rounded-full bg-[#8052FF]/20 border border-[#8052FF]/30 flex items-center justify-center text-[#8052FF] shrink-0">
                 <User className="w-3.5 h-3.5" />
               </div>
               <div className="overflow-hidden">
-                <p className={`text-xs font-medium truncate ${
+                <p className={`text-xs font-medium truncate group-hover:text-[#8052FF] transition-colors ${
                   theme === 'dark' ? 'text-white' : 'text-slate-900'
                 }`}>
-                  {currentUser?.name || (userRole === 'teacher' ? 'Prof. Robert Chen' : 'Alex Rivera')}
+                  {profile?.full_name || user?.user_metadata?.full_name || currentUser?.name || (effectiveRole === 'teacher' ? 'Prof. Robert Chen' : 'Alex Rivera')}
                 </p>
                 <p className={`text-[10px] font-mono truncate ${
                   theme === 'dark' ? 'text-[#777]' : 'text-slate-400'
                 }`}>
-                  {currentUser?.email || (userRole === 'teacher' ? 'teacher@evallq.ai' : 'student@evallq.ai')}
+                  {profile?.email || user?.email || currentUser?.email || (effectiveRole === 'teacher' ? 'teacher@evallq.ai' : 'student@evallq.ai')}
                 </p>
               </div>
             </div>
@@ -387,7 +411,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
               <span>Switch</span>
             </button>
             <button
-              onClick={logout}
+              onClick={supabaseLogout}
               className={`py-1 px-2 rounded-lg text-[10px] transition-colors flex items-center justify-center gap-1 ${
                 theme === 'dark'
                   ? 'bg-white/[0.04] hover:bg-rose-500/20 text-[#9A9A9A] hover:text-rose-400'

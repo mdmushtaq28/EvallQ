@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AppProvider, useApp } from './context/AppContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { DashboardPage } from './pages/DashboardPage';
@@ -16,11 +17,55 @@ import { StudentAssignmentSolvePage } from './pages/StudentAssignmentSolvePage';
 import { StudentResultPage } from './pages/StudentResultPage';
 import { AuthModal } from './components/auth/AuthModal';
 
-const MainLayout: React.FC = () => {
+// Supabase Authentication Pages
+import { LoginPage } from './pages/auth/LoginPage';
+import { SignupPage } from './pages/auth/SignupPage';
+import { VerifyEmailPage } from './pages/auth/VerifyEmailPage';
+import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
+import { ProfilePage } from './pages/auth/ProfilePage';
+import { Cpu } from 'lucide-react';
+
+interface MainLayoutProps {
+  onNavigate: (route: string) => void;
+  currentPath: string;
+}
+
+const MainLayout: React.FC<MainLayoutProps> = ({ onNavigate, currentPath }) => {
   const { theme } = useTheme();
-  const { activeTab, sidebarCollapsed, toggleSidebar, isAuthModalOpen, setAuthModalOpen } = useApp();
+  const { role: authRole } = useAuth();
+  const {
+    activeTab,
+    setActiveTab,
+    sidebarCollapsed,
+    toggleSidebar,
+    isAuthModalOpen,
+    setAuthModalOpen,
+    userRole,
+    setUserRole,
+  } = useApp();
+
+  // Keep AppContext userRole in sync with verified Supabase authRole
+  useEffect(() => {
+    if (authRole && authRole !== userRole) {
+      setUserRole(authRole);
+    }
+  }, [authRole, userRole, setUserRole]);
+
+  // Role-Based Access Control (RBAC): Prevent students from accessing teacher-only views
+  useEffect(() => {
+    const isTeacherTab = ['teacher-dashboard', 'teacher-assignments', 'teacher-review', 'teacher-analytics'].includes(activeTab);
+    if (authRole === 'student' && isTeacherTab) {
+      setActiveTab('dashboard');
+    }
+  }, [authRole, activeTab, setActiveTab]);
 
   const renderActivePage = () => {
+    // If route is /profile or tab is profile
+    if (currentPath === '/profile' || activeTab === 'profile') {
+      return <ProfilePage onNavigate={onNavigate} />;
+    }
+
     switch (activeTab) {
       case 'dashboard':
         return <DashboardPage />;
@@ -48,7 +93,7 @@ const MainLayout: React.FC = () => {
       case 'settings':
         return <SettingsPage />;
       default:
-        return <DashboardPage />;
+        return authRole === 'teacher' ? <TeacherDashboardPage /> : <DashboardPage />;
     }
   };
 
@@ -60,6 +105,7 @@ const MainLayout: React.FC = () => {
       <Sidebar
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebar}
+        onNavigate={onNavigate}
       />
 
       {/* Main Workspace Column */}
@@ -68,6 +114,7 @@ const MainLayout: React.FC = () => {
         <Header
           sidebarCollapsed={sidebarCollapsed}
           onToggleSidebar={toggleSidebar}
+          onNavigate={onNavigate}
         />
 
         {/* Scrollable Page Content */}
@@ -82,17 +129,87 @@ const MainLayout: React.FC = () => {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setAuthModalOpen(false)}
+        onNavigate={onNavigate}
       />
     </div>
   );
 };
 
+const AppRouter: React.FC = () => {
+  const [currentPath, setCurrentPath] = useState<string>(() => window.location.pathname);
+  const { loading, isAuthenticated, isEmailVerified } = useAuth();
+
+  // Listen to browser forward/back buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigate = (path: string) => {
+    window.history.pushState({}, '', path);
+    setCurrentPath(path);
+  };
+
+  // 1. Loading splash: avoids flickering during session restoration
+  if (loading) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-black text-white">
+        <div className="w-12 h-12 rounded-2xl bg-[#8052FF]/15 border border-[#8052FF]/30 flex items-center justify-center text-[#8052FF] animate-pulse mb-3">
+          <Cpu className="w-6 h-6" />
+        </div>
+        <div className="flex items-center gap-1 text-base font-semibold tracking-tight">
+          <span>Evall</span>
+          <span className="text-[#8052FF]">Q</span>
+        </div>
+        <p className="text-xs text-[#9A9A9A] font-mono mt-1">Initializing secure session...</p>
+      </div>
+    );
+  }
+
+  // 2. Explicit Auth Routes (Accessible without being logged in)
+  if (currentPath === '/signup') {
+    return <SignupPage onNavigate={navigate} />;
+  }
+  if (currentPath === '/verify-email') {
+    return <VerifyEmailPage onNavigate={navigate} />;
+  }
+  if (currentPath === '/forgot-password') {
+    return <ForgotPasswordPage onNavigate={navigate} />;
+  }
+  if (currentPath === '/reset-password') {
+    return <ResetPasswordPage onNavigate={navigate} />;
+  }
+  if (currentPath === '/login') {
+    return <LoginPage onNavigate={navigate} onSuccess={() => navigate('/')} />;
+  }
+
+  // 3. Protected Route Security Gate:
+  // If not authenticated, redirect to Login
+  if (!isAuthenticated) {
+    return <LoginPage onNavigate={navigate} onSuccess={() => navigate('/')} />;
+  }
+
+  // 4. Verification Security Gate:
+  // If authenticated but email is unverified, redirect to Email Verification
+  if (!isEmailVerified) {
+    return <VerifyEmailPage onNavigate={navigate} />;
+  }
+
+  // 5. Authenticated & Verified: Render Main App with RBAC
+  return <MainLayout onNavigate={navigate} currentPath={currentPath} />;
+};
+
 export default function App() {
   return (
     <ThemeProvider>
-      <AppProvider>
-        <MainLayout />
-      </AppProvider>
+      <AuthProvider>
+        <AppProvider>
+          <AppRouter />
+        </AppProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

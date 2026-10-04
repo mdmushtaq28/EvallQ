@@ -1,7 +1,7 @@
 export * from './api';
 export * from './assessment';
+export * from './auth';
 
-export type UserRole = 'student' | 'teacher';
 
 export type TabType =
   | 'dashboard'
@@ -17,7 +17,8 @@ export type TabType =
   | 'teacher-dashboard'
   | 'teacher-assignments'
   | 'teacher-review'
-  | 'teacher-analytics';
+  | 'teacher-analytics'
+  | 'profile';
 
 export type AIModelStatus = 'LOCAL_AI' | 'OFFLINE_MODE' | 'NOT_INSTALLED' | 'DEMO_MODE';
 

@@ -7,14 +7,17 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
   sidebarCollapsed: boolean;
+  onNavigate?: (route: string) => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
+export const Header: React.FC<HeaderProps> = ({ onToggleSidebar, onNavigate }) => {
   const { theme } = useTheme();
+  const { user, profile, role: authRole } = useAuth();
   const {
     activeTab,
     userRole,
@@ -82,6 +85,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
     'teacher-analytics': {
       title: 'Class Intelligence & Analytics',
       subtitle: 'Calculated topic mastery, frequently missed questions, and Qwen AI teaching insights',
+    },
+    profile: {
+      title: 'User Profile & Identity',
+      subtitle: 'Manage your verified account credentials, system role, and personalization settings',
     },
   };
 
@@ -157,26 +164,26 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
 
         {/* Current User Quick Badge */}
         <button
-          onClick={() => setAuthModalOpen(true)}
+          onClick={() => (onNavigate ? onNavigate('/profile') : setAuthModalOpen(true))}
           className={`flex items-center gap-2 px-2.5 py-1 rounded-full border transition-colors text-xs ${
             theme === 'dark'
               ? 'bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.08] text-white'
               : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-800'
           }`}
-          title="Click to Switch User / Sign In"
+          title="Click to View Profile / Account"
         >
           <div className="w-5 h-5 rounded-full bg-[#8052FF]/20 flex items-center justify-center text-[#8052FF]">
             <User className="w-3 h-3" />
           </div>
           <span className="hidden sm:inline font-medium text-xs">
-            {currentUser?.name || (userRole === 'teacher' ? 'Prof. Robert Chen' : 'Alex Rivera')}
+            {profile?.full_name || user?.user_metadata?.full_name || currentUser?.name || (userRole === 'teacher' ? 'Prof. Robert Chen' : 'Alex Rivera')}
           </span>
           <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded uppercase ${
             theme === 'dark'
               ? 'bg-white/[0.06] text-[#9A9A9A]'
               : 'bg-slate-200 text-slate-600'
           }`}>
-            {userRole}
+            {authRole || userRole}
           </span>
         </button>
 
