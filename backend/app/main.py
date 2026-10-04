@@ -37,10 +37,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS Configuration
+# CORS Configuration - support both local dev and production Railway domains
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=r"https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,16 +63,6 @@ async def model_not_initialized_handler(request: Request, exc: ModelNotInitializ
     )
 
 
-# Root endpoint
-@app.get("/", summary="Root Status Endpoint")
-async def root() -> dict:
-    return {
-        "name": settings.APP_NAME,
-        "version": settings.APP_VERSION,
-        "status": "running",
-    }
-
-
 # Include Routers under /api
 app.include_router(health_router, prefix="/api")
 app.include_router(model_router, prefix="/api")
@@ -84,4 +75,43 @@ app.include_router(assessment_router, prefix="/api")
 app.include_router(teacher_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 app.include_router(student_router, prefix="/api")
+
+
+# Production Static Files & SPA Serving for Railway / Unified Containers
+import os
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+candidates = [
+    os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")),
+    os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "frontend", "dist")),
+    os.path.abspath("frontend/dist"),
+    os.path.abspath("/app/frontend/dist"),
+    os.path.abspath("dist"),
+]
+frontend_dist_dir = None
+for c in candidates:
+    if os.path.exists(c) and os.path.isdir(c) and os.path.exists(os.path.join(c, "index.html")):
+        frontend_dist_dir = c
+        break
+
+if frontend_dist_dir:
+    assets_dir = os.path.join(frontend_dist_dir, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="static_assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str):
+        target = os.path.join(frontend_dist_dir, full_path)
+        if full_path and os.path.exists(target) and os.path.isfile(target):
+            return FileResponse(target)
+        return FileResponse(os.path.join(frontend_dist_dir, "index.html"))
+else:
+    @app.get("/", summary="Root Status Endpoint")
+    async def root() -> dict:
+        return {
+            "name": settings.APP_NAME,
+            "version": settings.APP_VERSION,
+            "status": "running",
+        }
 

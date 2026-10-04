@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     APP_NAME: str = "EvallQ API"
     APP_VERSION: str = "0.1.0"
-    HOST: str = "127.0.0.1"
+    HOST: str = "0.0.0.0"
     PORT: int = 8000
     DATABASE_URL: str = "sqlite:///./focusflow.db"
     FRONTEND_URL: str = "http://localhost:5173"
