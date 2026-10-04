@@ -273,7 +273,9 @@ export const StudentResultPage: React.FC = () => {
           </h3>
 
           {result.questions?.map((q: any, idx: number) => {
-            const qScore = q.teacher_marks ?? q.suggested_marks;
+            const hasTeacherScore = q.teacher_marks !== null && q.teacher_marks !== undefined;
+            const qScore = hasTeacherScore ? q.teacher_marks : (q.suggested_marks ?? 0);
+            const aiScore = q.ai_score ?? q.suggested_marks ?? 0;
             const qMax = q.maximum_marks || 10;
             const qPct = Math.round((qScore / qMax) * 100);
 
@@ -283,7 +285,7 @@ export const StudentResultPage: React.FC = () => {
                 className="p-6 rounded-2xl bg-[#0A0A0A] border border-white/[0.08] space-y-4"
               >
                 {/* Question Header */}
-                <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] pb-3">
                   <div className="flex items-center gap-2">
                     <span className="w-7 h-7 rounded-lg bg-[#8052FF]/20 text-[#8052FF] font-mono text-xs font-medium flex items-center justify-center">
                       Q{q.question_number}
@@ -291,12 +293,30 @@ export const StudentResultPage: React.FC = () => {
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-white/[0.04] text-[#9A9A9A]">
                       {q.topic}
                     </span>
+                    {q.strictness && (
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-mono uppercase bg-[#8052FF]/10 text-[#8052FF] border border-[#8052FF]/20">
+                        {q.strictness} mode
+                      </span>
+                    )}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-medium text-white">
-                      {qScore} / {qMax} pts
-                    </span>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      {hasTeacherScore ? (
+                        <div className="space-y-0.5">
+                          <span className="font-mono text-xs font-medium text-white block">
+                            Teacher Final: {qScore} / {qMax} pts
+                          </span>
+                          <span className="font-mono text-[10px] text-[#777] block">
+                            AI Suggested: {aiScore} / {qMax} pts
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="font-mono text-xs font-medium text-white">
+                          AI Suggested: {aiScore} / {qMax} pts
+                        </span>
+                      )}
+                    </div>
                     <span
                       className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
                         qScore === 0 || q.rubric_match === 'Incorrect'
@@ -325,6 +345,34 @@ export const StudentResultPage: React.FC = () => {
                   </p>
                 </div>
 
+                {/* Model Answer if available */}
+                {q.model_answer && (
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05] text-xs text-[#9A9A9A]">
+                    <p className="text-[10px] font-mono uppercase text-[#8052FF] mb-1">Expected / Model Answer</p>
+                    <p className="text-[#CCC]">{q.model_answer}</p>
+                  </div>
+                )}
+
+                {/* Teacher Rubric Breakdown */}
+                {q.criterion_scores && q.criterion_scores.length > 0 && (
+                  <div className="p-3.5 rounded-xl bg-black border border-white/[0.06] space-y-2">
+                    <p className="text-[10px] font-mono uppercase text-[#8052FF]">Teacher Rubric Evaluation</p>
+                    <div className="space-y-1.5">
+                      {q.criterion_scores.map((cs: any, cIdx: number) => (
+                        <div key={cIdx} className="flex items-start justify-between text-xs p-2 rounded bg-white/[0.02] border border-white/[0.04]">
+                          <div className="space-y-0.5 max-w-[75%]">
+                            <span className="font-medium text-white block">{cs.criterion}</span>
+                            {cs.feedback && <p className="text-[11px] text-[#888]">{cs.feedback}</p>}
+                          </div>
+                          <span className="font-mono text-xs text-[#8052FF] font-medium shrink-0">
+                            {cs.score} / {cs.max_score} pts
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* AI Evaluation Analysis */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   {q.strengths && qScore > 0 && q.rubric_match !== 'Incorrect' && (
@@ -336,17 +384,19 @@ export const StudentResultPage: React.FC = () => {
 
                   {q.mistakes && (
                     <div className="p-3 rounded-xl bg-rose-500/5 border border-rose-500/20 text-rose-300">
-                      <p className="text-[10px] font-mono uppercase text-rose-400 mb-1">Areas for Improvement</p>
+                      <p className="text-[10px] font-mono uppercase text-rose-400 mb-1">Areas for Improvement / Missing Points</p>
                       <p>{q.mistakes}</p>
                     </div>
                   )}
                 </div>
 
                 {/* Teacher comments if any */}
-                {q.teacher_feedback && (
+                {(q.override_reason || q.teacher_feedback) && (
                   <div className="p-3 rounded-xl bg-[#8052FF]/10 border border-[#8052FF]/20 text-xs text-white">
-                    <p className="text-[10px] font-mono uppercase text-[#8052FF] mb-0.5">Instructor Comment</p>
-                    <p className="italic">"{q.teacher_feedback}"</p>
+                    <p className="text-[10px] font-mono uppercase text-[#8052FF] mb-0.5">
+                      {q.override_reason ? 'Teacher Override Reason & Remarks' : 'Instructor Comment'}
+                    </p>
+                    <p className="italic">"{q.override_reason || q.teacher_feedback}"</p>
                   </div>
                 )}
 

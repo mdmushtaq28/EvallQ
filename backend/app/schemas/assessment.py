@@ -10,12 +10,25 @@ class OCRPageResult(BaseModel):
     confidence: float = 1.0
 
 
+class CriterionScoreItem(BaseModel):
+    criterion: str
+    score: float
+    max_score: float
+    feedback: Optional[str] = ""
+
+
 class ExtractedQuestionItem(BaseModel):
     question_number: int
     page_number: int = 1
     question_text: str
     student_answer: str
     maximum_marks: float = 5.0
+    model_answer: Optional[str] = None
+    expected_answer: Optional[str] = None
+    key_concepts: Optional[List[str]] = Field(default_factory=list)
+    rubric: Optional[str] = None
+    strictness: str = "balanced"  # strict, balanced, flexible
+    topic: Optional[str] = "General"
 
 
 class AssessmentUploadResponse(BaseModel):
@@ -60,8 +73,17 @@ class QuestionEvaluationResult(BaseModel):
     learning_gap: str = ""
     is_correct: Optional[bool] = None
     ideal_answer: Optional[str] = None
+    model_answer: Optional[str] = None
     confidence: Optional[float] = 0.95
     percentage: Optional[float] = None
+    strictness: Optional[str] = "balanced"
+    criterion_scores: Optional[List[CriterionScoreItem]] = Field(default_factory=list)
+    supported_points: Optional[List[str]] = Field(default_factory=list)
+    missing_points: Optional[List[str]] = Field(default_factory=list)
+    teacher_review_required: Optional[bool] = False
+    ai_score: Optional[float] = None
+    teacher_final_score: Optional[float] = None
+    override_reason: Optional[str] = None
 
 
 class TopicPerformanceItem(BaseModel):
@@ -94,6 +116,9 @@ class AssessmentEvaluationResponse(BaseModel):
     teacher_score: Optional[float] = None
     final_score: Optional[float] = None
     teacher_feedback: Optional[str] = None
+    ai_score: Optional[float] = None
+    teacher_final_score: Optional[float] = None
+    override_reason: Optional[str] = None
     percentage: float
     approval_status: str
     questions: List[QuestionEvaluationResult]
@@ -109,6 +134,12 @@ class AssessmentEvaluationResponse(BaseModel):
                 values["maximum_marks"] = values["total_maximum_marks"]
             if values.get("suggested_score") is None:
                 values["suggested_score"] = values.get("final_score") or values.get("ai_suggested_score", 0.0)
+            if values.get("ai_score") is None:
+                values["ai_score"] = values.get("ai_suggested_score")
+            if values.get("teacher_final_score") is None:
+                values["teacher_final_score"] = values.get("teacher_score")
+            if values.get("override_reason") is None:
+                values["override_reason"] = values.get("teacher_feedback")
         return values
 
 

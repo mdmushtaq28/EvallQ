@@ -115,6 +115,9 @@ export interface AssignmentItem {
     maximum_marks: number;
     topic: string;
     rubric?: string;
+    model_answer?: string;
+    key_concepts?: string[] | string;
+    strictness?: 'strict' | 'balanced' | 'flexible' | string;
   }>;
   status: string;
   created_at: string;

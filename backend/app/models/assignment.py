@@ -75,6 +75,10 @@ class Assignment(Base):
                     "max_marks": float(q.maximum_marks),
                     "topic": q.topic or "General",
                     "rubric": q.rubric or "",
+                    "model_answer": getattr(q, "model_answer", "") or "",
+                    "expected_answer": getattr(q, "model_answer", "") or "",
+                    "key_concepts": getattr(q, "key_concepts", "") or "",
+                    "strictness": getattr(q, "strictness", "balanced") or "balanced",
                 }
                 for q in self.question_items
             ]
@@ -101,6 +105,10 @@ class Assignment(Base):
                         "max_marks": q_max,
                         "topic": str(q.get("topic") or "General"),
                         "rubric": str(q.get("rubric") or ""),
+                        "model_answer": str(q.get("model_answer") or q.get("expected_answer") or ""),
+                        "expected_answer": str(q.get("model_answer") or q.get("expected_answer") or ""),
+                        "key_concepts": str(q.get("key_concepts") or ""),
+                        "strictness": str(q.get("strictness") or "balanced"),
                     })
             return normalized
         except Exception:
@@ -122,10 +130,24 @@ class AssignmentQuestionItem(Base):
     maximum_marks = Column(Float, nullable=False, default=10.0)
     topic = Column(String(100), nullable=False, default="General")
     rubric = Column(Text, nullable=True)
+    model_answer = Column(Text, nullable=True)
+    key_concepts = Column(Text, nullable=True)
+    strictness = Column(String(20), nullable=False, default="balanced")  # strict, balanced, flexible
 
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     assignment = relationship("Assignment", back_populates="question_items")
+
+    def get_key_concepts_list(self) -> List[str]:
+        if not self.key_concepts:
+            return []
+        try:
+            data = json.loads(self.key_concepts)
+            if isinstance(data, list):
+                return data
+            return [c.strip() for c in str(data).split(",") if c.strip()]
+        except Exception:
+            return [c.strip() for c in str(self.key_concepts).split(",") if c.strip()]
 
 
 class AssignmentStudent(Base):

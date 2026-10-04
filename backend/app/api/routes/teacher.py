@@ -87,7 +87,10 @@ async def create_assignment(
                 question_type=q_data.question_type or "Subjective",
                 maximum_marks=q_data.maximum_marks,
                 topic=q_data.topic or "General",
-                rubric=q_data.rubric or ""
+                rubric=q_data.rubric or "",
+                model_answer=q_data.model_answer or q_data.expected_answer or "",
+                key_concepts=json.dumps(q_data.key_concepts) if isinstance(q_data.key_concepts, list) else (q_data.key_concepts or ""),
+                strictness=q_data.strictness or "balanced"
             )
             db.add(q_item)
 
@@ -427,16 +430,27 @@ async def get_submission_for_review(
             "student_answer": q.student_answer,
             "maximum_marks": q.maximum_marks,
             "suggested_marks": q.suggested_marks,
+            "ai_score": q.suggested_marks,
             "teacher_marks": q.teacher_marks,
+            "teacher_final_score": q.teacher_marks,
+            "override_reason": q.teacher_feedback,
             "teacher_feedback": q.teacher_feedback,
             "topic": q.topic,
+            "model_answer": q.model_answer or assignment_questions_dict.get(q.question_number, {}).get("model_answer", ""),
+            "rubric": q.rubric or assignment_questions_dict.get(q.question_number, {}).get("rubric", ""),
+            "strictness": q.strictness or assignment_questions_dict.get(q.question_number, {}).get("strictness", "balanced"),
             "rubric_match": q.rubric_match or "Partial",
             "reasoning": q.reasoning or "",
             "feedback": q.feedback or "",
             "strengths": q.strengths or "",
             "mistakes": q.mistakes or "",
             "learning_gap": q.learning_gap or "",
-            "rubric_criteria": assignment_questions_dict.get(q.question_number, {}).get("rubric", ""),
+            "criterion_scores": q.get_criterion_scores_list(),
+            "supported_points": q.get_supported_points_list(),
+            "missing_points": q.get_missing_points_list(),
+            "confidence": q.confidence if q.confidence is not None else 0.95,
+            "teacher_review_required": q.teacher_review_required if q.teacher_review_required is not None else False,
+            "rubric_criteria": q.rubric or assignment_questions_dict.get(q.question_number, {}).get("rubric", ""),
         }
         for q in questions
     ]
@@ -456,11 +470,14 @@ async def get_submission_for_review(
         "raw_ocr_pages": sub.get_raw_ocr_pages(),
         "verified_ocr_text": sub.verified_ocr_text,
         "ai_suggested_score": sub.ai_suggested_score,
+        "ai_score": sub.ai_suggested_score,
         "teacher_score": sub.teacher_score,
-        "final_score": sub.final_score,
+        "teacher_final_score": sub.teacher_score,
+        "final_score": sub.final_score if sub.final_score is not None else (sub.teacher_score if sub.teacher_score is not None else sub.ai_suggested_score),
         "total_maximum_marks": sub.total_maximum_marks,
         "approval_status": sub.approval_status,
         "teacher_feedback": sub.teacher_feedback,
+        "override_reason": sub.teacher_feedback,
         "topic_performance": sub.get_topic_performance_dict(),
         "learning_gaps": sub.get_learning_gaps_list(),
         "recommendations": sub.get_recommendations_list(),
@@ -492,8 +509,9 @@ async def save_teacher_score(
             if qu.question_id in q_map:
                 q = q_map[qu.question_id]
                 q.teacher_marks = max(0.0, min(float(qu.teacher_marks), q.maximum_marks))
-                if qu.teacher_feedback is not None:
-                    q.teacher_feedback = qu.teacher_feedback
+                feedback_val = qu.teacher_feedback or getattr(qu, "override_reason", None)
+                if feedback_val is not None:
+                    q.teacher_feedback = feedback_val
 
         question_sum = sum(
             q.teacher_marks if q.teacher_marks is not None else q.suggested_marks
@@ -536,10 +554,14 @@ async def save_teacher_score(
     return {
         "success": True,
         "submission_id": sub.id,
+        "ai_score": sub.ai_suggested_score,
+        "ai_suggested_score": sub.ai_suggested_score,
         "teacher_score": sub.teacher_score,
+        "teacher_final_score": sub.teacher_score,
         "final_score": sub.final_score,
         "approval_status": sub.approval_status,
         "teacher_feedback": sub.teacher_feedback,
+        "override_reason": sub.teacher_feedback,
     }
 
 

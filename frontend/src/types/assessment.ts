@@ -37,6 +37,13 @@ export interface OCRVerifyResponse {
   extracted_questions: ExtractedQuestionItem[];
 }
 
+export interface CriterionScoreItem {
+  criterion: string;
+  score: number;
+  max_score: number;
+  feedback?: string;
+}
+
 export interface QuestionEvaluationResult {
   question_number: number;
   page_number: number;
@@ -55,8 +62,17 @@ export interface QuestionEvaluationResult {
   learning_gap: string;
   is_correct?: boolean;
   ideal_answer?: string;
+  model_answer?: string;
   confidence?: number;
   percentage?: number;
+  strictness?: 'strict' | 'balanced' | 'flexible' | string;
+  criterion_scores?: CriterionScoreItem[];
+  supported_points?: string[];
+  missing_points?: string[];
+  teacher_review_required?: boolean;
+  ai_score?: number;
+  teacher_final_score?: number | null;
+  override_reason?: string | null;
 }
 
 export interface TopicPerformanceItem {
@@ -84,9 +100,12 @@ export interface AssessmentEvaluationResponse {
   submission_id: string;
   total_maximum_marks: number;
   ai_suggested_score: number;
+  ai_score?: number;
   teacher_score?: number | null;
+  teacher_final_score?: number | null;
   final_score?: number | null;
   teacher_feedback?: string | null;
+  override_reason?: string | null;
   percentage: number;
   approval_status: string;
   questions: QuestionEvaluationResult[];

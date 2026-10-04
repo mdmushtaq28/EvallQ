@@ -124,4 +124,54 @@ class AssessmentQuestion(Base):
     mistakes = Column(Text, nullable=True)
     learning_gap = Column(Text, nullable=True)
 
+    # Teacher Rubric & Criterion Scoring
+    model_answer = Column(Text, nullable=True)
+    key_concepts = Column(Text, nullable=True)
+    rubric = Column(Text, nullable=True)
+    strictness = Column(String(20), nullable=False, default="balanced")
+    criterion_scores = Column(Text, nullable=True)  # JSON-encoded List[Dict]
+    supported_points = Column(Text, nullable=True)  # JSON-encoded List[str]
+    missing_points = Column(Text, nullable=True)    # JSON-encoded List[str]
+    confidence = Column(Float, nullable=True, default=0.95)
+    teacher_review_required = Column(Integer, nullable=False, default=0)
+
     submission = relationship("AssessmentSubmission", back_populates="questions")
+
+    def get_criterion_scores_list(self) -> List[Dict[str, Any]]:
+        if not self.criterion_scores:
+            return []
+        try:
+            data = json.loads(self.criterion_scores)
+            return data if isinstance(data, list) else []
+        except Exception:
+            return []
+
+    def get_supported_points_list(self) -> List[str]:
+        if not self.supported_points:
+            return [s.strip() for s in (self.strengths or "").split(";") if s.strip()]
+        try:
+            data = json.loads(self.supported_points)
+            return data if isinstance(data, list) else []
+        except Exception:
+            return [s.strip() for s in (self.strengths or "").split(";") if s.strip()]
+
+    def get_missing_points_list(self) -> List[str]:
+        if not self.missing_points:
+            return [m.strip() for m in (self.mistakes or "").split(";") if m.strip()]
+        try:
+            data = json.loads(self.missing_points)
+            return data if isinstance(data, list) else []
+        except Exception:
+            return [m.strip() for m in (self.mistakes or "").split(";") if m.strip()]
+
+    def get_key_concepts_list(self) -> List[str]:
+        if not self.key_concepts:
+            return []
+        try:
+            data = json.loads(self.key_concepts)
+            if isinstance(data, list):
+                return data
+            return [c.strip() for c in str(data).split(",") if c.strip()]
+        except Exception:
+            return [c.strip() for c in str(self.key_concepts).split(",") if c.strip()]
+

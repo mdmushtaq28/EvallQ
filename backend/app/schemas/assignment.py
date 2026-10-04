@@ -11,6 +11,10 @@ class QuestionSchema(BaseModel):
     maximum_marks: float = 10.0
     topic: str = "General"
     rubric: Optional[str] = None
+    model_answer: Optional[str] = None
+    expected_answer: Optional[str] = None
+    key_concepts: Optional[List[str]] = Field(default_factory=list)
+    strictness: str = "balanced"  # strict, balanced, flexible
 
 
 class AssignmentCreateRequest(BaseModel):
@@ -135,6 +139,7 @@ class QuestionScoreUpdate(BaseModel):
     question_id: str
     teacher_marks: float
     teacher_feedback: Optional[str] = None
+    override_reason: Optional[str] = None
 
 
 class TeacherScoreUpdateRequest(BaseModel):

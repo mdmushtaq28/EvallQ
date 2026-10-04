@@ -355,7 +355,11 @@ async def submit_student_typed_assignment(
             student_answer=student_ans if student_ans else "[No answer submitted]",
             maximum_marks=float(q.get("maximum_marks", 10.0)),
             suggested_marks=0.0,
-            topic=q.get("topic", "General")
+            topic=q.get("topic", "General"),
+            model_answer=q.get("model_answer") or q.get("expected_answer") or "",
+            key_concepts=_json.dumps(q.get("key_concepts")) if isinstance(q.get("key_concepts"), list) else (q.get("key_concepts") or ""),
+            rubric=q.get("rubric", ""),
+            strictness=q.get("strictness", "balanced")
         )
         db.add(qr)
         question_records.append(qr)
@@ -371,11 +375,16 @@ async def submit_student_typed_assignment(
             question_text=qr.question_text,
             student_answer=qr.student_answer,
             maximum_marks=qr.maximum_marks,
+            topic=qr.topic,
+            model_answer=qr.model_answer,
+            key_concepts=qr.get_key_concepts_list(),
+            rubric=qr.rubric,
+            strictness=qr.strictness or "balanced"
         )
         for qr in question_records
     ]
 
-    # Execute AI evaluation using the existing local Qwen evaluator
+    # Execute AI evaluation using the teacher-controlled rubric evaluator
     logger.info(
         f"Executing AI rubric evaluation for typed submission {submission_id} "
         f"(Student: {current_student.name}, Questions: {len(extracted_items)})..."
@@ -395,6 +404,11 @@ async def submit_student_typed_assignment(
             qr.strengths = qe.strengths
             qr.mistakes = qe.mistakes
             qr.learning_gap = qe.learning_gap
+            qr.criterion_scores = _json.dumps([cs.model_dump() for cs in qe.criterion_scores]) if qe.criterion_scores else None
+            qr.supported_points = _json.dumps(qe.supported_points) if qe.supported_points else None
+            qr.missing_points = _json.dumps(qe.missing_points) if qe.missing_points else None
+            qr.confidence = qe.confidence
+            qr.teacher_review_required = qe.teacher_review_required
 
     # Persist aggregated scores and analytics back to the submission record
     submission.ai_suggested_score = eval_response.ai_suggested_score
@@ -490,9 +504,15 @@ async def get_student_submission_result(
                 student_answer=q.student_answer,
                 maximum_marks=q.maximum_marks,
                 suggested_marks=q.suggested_marks,
+                ai_score=q.suggested_marks,
                 teacher_marks=q.teacher_marks,
+                teacher_final_score=q.teacher_marks,
+                override_reason=q.teacher_feedback,
                 teacher_feedback=q.teacher_feedback,
                 topic=q.topic,
+                model_answer=q.model_answer or "",
+                rubric=q.rubric or "",
+                strictness=q.strictness or "balanced",
                 rubric_match=q.rubric_match or "Partial",
                 reasoning=q.reasoning or "",
                 feedback=q.feedback or "",
@@ -500,9 +520,13 @@ async def get_student_submission_result(
                 mistakes=q.mistakes or "",
                 learning_gap=q.learning_gap or "",
                 is_correct=q_is_correct,
-                ideal_answer="",
-                confidence=0.95,
+                ideal_answer=q.model_answer or "",
+                confidence=q.confidence if q.confidence is not None else 0.95,
                 percentage=q_pct,
+                criterion_scores=q.get_criterion_scores_list(),
+                supported_points=q.get_supported_points_list(),
+                missing_points=q.get_missing_points_list(),
+                teacher_review_required=q.teacher_review_required if q.teacher_review_required is not None else False
             )
         )
 
@@ -556,7 +580,7 @@ async def get_student_submission_result(
                 rationale=""
             ))
 
-    # Official score to display
+    # Official score to display: teacher_score if reviewed/approved, otherwise ai_suggested_score
     official_score = (
         submission.final_score if submission.final_score is not None
         else submission.teacher_score if submission.teacher_score is not None
@@ -571,10 +595,13 @@ async def get_student_submission_result(
         total_maximum_marks=total_max,
         maximum_marks=total_max,
         ai_suggested_score=submission.ai_suggested_score or 0.0,
+        ai_score=submission.ai_suggested_score or 0.0,
         suggested_score=official_score,
         teacher_score=submission.teacher_score,
+        teacher_final_score=submission.teacher_score,
         final_score=submission.final_score,
         teacher_feedback=submission.teacher_feedback,
+        override_reason=submission.teacher_feedback,
         percentage=pct,
         approval_status=submission.approval_status,
         questions=question_results,

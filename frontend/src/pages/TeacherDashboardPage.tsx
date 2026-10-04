@@ -71,9 +71,32 @@ export const TeacherDashboardPage: React.FC = () => {
     maximum_marks: number;
     topic: string;
     rubric?: string;
+    model_answer?: string;
+    key_concepts?: string;
+    strictness?: 'strict' | 'balanced' | 'flexible';
   }>>([
-    { question_number: 1, question_text: '', question_type: 'Subjective', maximum_marks: 10, topic: 'Computer Science', rubric: 'Clear definition and accurate explanation' },
-    { question_number: 2, question_text: '', question_type: 'Short Answer', maximum_marks: 10, topic: 'Algorithms', rubric: 'Correct time/space complexity analysis' },
+    {
+      question_number: 1,
+      question_text: '',
+      question_type: 'Subjective',
+      maximum_marks: 10,
+      topic: 'Computer Science',
+      rubric: 'Definition = 2, Parent-child relationship = 3, Properties/methods = 2, extends keyword = 2, Example = 1',
+      model_answer: 'Inheritance allows a child class to get properties and methods from a parent class using extends.',
+      key_concepts: 'Inheritance, Subclass, Superclass, Extends',
+      strictness: 'balanced',
+    },
+    {
+      question_number: 2,
+      question_text: '',
+      question_type: 'Short Answer',
+      maximum_marks: 10,
+      topic: 'Algorithms',
+      rubric: 'Definition = 3, Time Complexity = 4, Space Complexity = 3',
+      model_answer: '',
+      key_concepts: 'Algorithm, Complexity',
+      strictness: 'balanced',
+    },
   ]);
   const [creatingAssignment, setCreatingAssignment] = useState<boolean>(false);
 
@@ -231,6 +254,9 @@ export const TeacherDashboardPage: React.FC = () => {
         maximum_marks: 10,
         topic: 'General',
         rubric: '',
+        model_answer: '',
+        key_concepts: '',
+        strictness: 'balanced',
       },
     ]);
   };
@@ -264,7 +290,14 @@ export const TeacherDashboardPage: React.FC = () => {
         total_maximum_marks: totalMarks,
         rubric_guidance: newRubric.trim() || undefined,
         expected_concepts: conceptsList,
-        questions: newQuestions.filter(q => q.question_text.trim().length > 0),
+        questions: newQuestions
+          .filter(q => q.question_text.trim().length > 0)
+          .map(q => ({
+            ...q,
+            key_concepts: q.key_concepts
+              ? q.key_concepts.split(',').map(s => s.trim()).filter(Boolean)
+              : [],
+          })),
         status: newStatus,
         assigned_student_ids: targetStudentIds,
         due_date: newDueDate.trim() || undefined,
@@ -640,9 +673,10 @@ export const TeacherDashboardPage: React.FC = () => {
 
                 {reviewData.questions?.map((q: any) => {
                   const currentTeacherMarks = questionScores[q.id] ?? q.teacher_marks ?? q.suggested_marks ?? 0;
+                  const aiScore = q.ai_score ?? q.suggested_marks ?? 0;
                   return (
                     <Card key={q.id} className="p-4 space-y-3">
-                      <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+                      <div className="flex flex-wrap items-center justify-between border-b border-white/[0.06] pb-2 gap-2">
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-medium text-xs text-[#8052FF]">
                             Q{q.question_number}
@@ -650,14 +684,62 @@ export const TeacherDashboardPage: React.FC = () => {
                           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.05] text-[#9A9A9A]">
                             {q.topic}
                           </span>
+                          {q.strictness && (
+                            <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#8052FF]/10 text-[#8052FF] border border-[#8052FF]/20">
+                              {q.strictness} mode
+                            </span>
+                          )}
                         </div>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.06] text-[#BBB]">
-                          Rubric Match: {q.rubric_match}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {q.teacher_review_required && (
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              Review Required
+                            </span>
+                          )}
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.06] text-[#BBB]">
+                            Rubric Match: {q.rubric_match}
+                          </span>
+                        </div>
                       </div>
 
                       <p className="text-xs text-white font-medium">{q.question_text}</p>
 
+                      {/* Student's Typed Answer */}
+                      <div className="p-3 rounded-xl bg-black border border-white/[0.06]">
+                        <span className="text-[10px] font-mono uppercase text-[#777] block mb-1">Student Answer</span>
+                        <p className="text-xs text-[#DDD] whitespace-pre-wrap">{q.student_answer || '[No answer submitted]'}</p>
+                      </div>
+
+                      {/* Model Answer if provided */}
+                      {q.model_answer && (
+                        <div className="p-2.5 rounded-lg bg-white/[0.02] border border-white/[0.05] text-[11px] text-[#9A9A9A]">
+                          <strong className="text-[10px] font-mono uppercase text-[#8052FF] block mb-0.5">Model Answer</strong>
+                          {q.model_answer}
+                        </div>
+                      )}
+
+                      {/* Criterion Scores Table if present */}
+                      {q.criterion_scores && q.criterion_scores.length > 0 && (
+                        <div className="p-3 rounded-xl bg-black border border-white/[0.06] space-y-2">
+                          <span className="text-[10px] font-mono uppercase text-[#8052FF] block">Teacher Rubric Breakdown</span>
+                          <div className="space-y-1.5">
+                            {q.criterion_scores.map((cs: any, cIdx: number) => (
+                              <div key={cIdx} className="flex items-start justify-between text-xs p-1.5 rounded bg-white/[0.02] border border-white/[0.04]">
+                                <div className="space-y-0.5 max-w-[75%]">
+                                  <span className="font-medium text-white block">{cs.criterion}</span>
+                                  {cs.feedback && <p className="text-[11px] text-[#888]">{cs.feedback}</p>}
+                                </div>
+                                <span className="font-mono text-xs text-[#8052FF] font-medium shrink-0">
+                                  {cs.score} / {cs.max_score} pts
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Strengths & Mistakes */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                         {q.strengths && currentTeacherMarks > 0 && q.rubric_match !== 'Incorrect' && (
                           <div className="p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-emerald-300 text-[11px]">
@@ -667,7 +749,7 @@ export const TeacherDashboardPage: React.FC = () => {
                         )}
                         {q.mistakes && (
                           <div className="p-2.5 rounded-lg bg-rose-500/5 border border-rose-500/20 text-rose-300 text-[11px]">
-                            <strong className="block text-[10px] font-mono text-rose-400 uppercase">Mistakes</strong>
+                            <strong className="block text-[10px] font-mono text-rose-400 uppercase">Mistakes / Missing Points</strong>
                             {q.mistakes}
                           </div>
                         )}
@@ -675,40 +757,45 @@ export const TeacherDashboardPage: React.FC = () => {
 
                       {/* Score Override & Feedback Fields */}
                       <div className="pt-2 border-t border-white/[0.06] grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
-                        <div>
-                          <label className="text-[10px] font-mono text-[#9A9A9A] uppercase block mb-1">
-                            Teacher Marks
-                          </label>
-                          <div className="flex items-center gap-1.5">
-                            <input
-                              type="number"
-                              step="0.5"
-                              min="0"
-                              max={q.maximum_marks}
-                              value={currentTeacherMarks}
-                              onChange={e => {
-                                const val = parseFloat(e.target.value) || 0;
-                                setQuestionScores(prev => ({ ...prev, [q.id]: val }));
-                              }}
-                              className="w-16 px-2 py-1 text-xs font-mono font-bold rounded-lg bg-black border border-white/[0.12] text-white focus:outline-none focus:border-[#8052FF]"
-                            />
-                            <span className="text-xs font-mono text-[#777]">/ {q.maximum_marks}</span>
+                        <div className="space-y-1">
+                          <div className="text-[10px] font-mono text-[#9A9A9A]">
+                            AI Suggested: <strong className="text-white">{aiScore} / {q.maximum_marks}</strong>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-mono text-[#8052FF] uppercase block mb-0.5">
+                              Teacher Final Score
+                            </label>
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="number"
+                                step="0.5"
+                                min="0"
+                                max={q.maximum_marks}
+                                value={currentTeacherMarks}
+                                onChange={e => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  setQuestionScores(prev => ({ ...prev, [q.id]: val }));
+                                }}
+                                className="w-16 px-2 py-1 text-xs font-mono font-bold rounded-lg bg-black border border-[#8052FF]/60 text-white focus:outline-none focus:border-[#8052FF]"
+                              />
+                              <span className="text-xs font-mono text-[#777]">/ {q.maximum_marks}</span>
+                            </div>
                           </div>
                         </div>
 
                         <div className="sm:col-span-2">
                           <label className="text-[10px] font-mono text-[#9A9A9A] uppercase block mb-1">
-                            Question Comment
+                            Teacher Feedback / Override Reason
                           </label>
                           <input
                             type="text"
-                            placeholder="Add specific guidance or correction..."
-                            value={questionFeedbacks[q.id] || ''}
+                            placeholder="Add specific guidance or reason for mark override..."
+                            value={questionFeedbacks[q.id] || q.override_reason || q.teacher_feedback || ''}
                             onChange={e => {
                               const val = e.target.value;
                               setQuestionFeedbacks(prev => ({ ...prev, [q.id]: val }));
                             }}
-                            className="w-full px-2.5 py-1 text-xs rounded-lg bg-black border border-white/[0.12] text-white placeholder-[#555] focus:outline-none focus:border-[#8052FF]"
+                            className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-black border border-white/[0.12] text-white placeholder-[#555] focus:outline-none focus:border-[#8052FF]"
                           />
                         </div>
                       </div>
@@ -1474,7 +1561,7 @@ export const TeacherDashboardPage: React.FC = () => {
 
                       <input
                         type="text"
-                        placeholder="Grading Rubric / Criteria (e.g. Award 5 marks for definition, 5 marks for code example)..."
+                        placeholder="Grading Rubric (e.g. Definition = 2, Parent-child = 3, Properties/methods = 2, extends = 2, Example = 1)..."
                         value={q.rubric || ''}
                         onChange={e => {
                           const val = e.target.value;
@@ -1482,6 +1569,42 @@ export const TeacherDashboardPage: React.FC = () => {
                         }}
                         className="w-full px-2.5 py-1 rounded bg-black border border-white/[0.06] text-[11px] text-[#BBB] placeholder-[#444]"
                       />
+
+                      <input
+                        type="text"
+                        placeholder="Model / Expected Answer (e.g. Child class acquires properties and methods from parent class)..."
+                        value={q.model_answer || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setNewQuestions(prev => prev.map((item, i) => (i === idx ? { ...item, model_answer: val } : item)));
+                        }}
+                        className="w-full px-2.5 py-1 rounded bg-black border border-white/[0.06] text-[11px] text-[#BBB] placeholder-[#444]"
+                      />
+
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="Key concepts (comma-separated)..."
+                          value={q.key_concepts || ''}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setNewQuestions(prev => prev.map((item, i) => (i === idx ? { ...item, key_concepts: val } : item)));
+                          }}
+                          className="flex-1 px-2.5 py-1 rounded bg-black border border-white/[0.06] text-[11px] text-[#BBB] placeholder-[#444]"
+                        />
+                        <select
+                          value={q.strictness || 'balanced'}
+                          onChange={e => {
+                            const val = e.target.value as any;
+                            setNewQuestions(prev => prev.map((item, i) => (i === idx ? { ...item, strictness: val } : item)));
+                          }}
+                          className="px-2 py-1 rounded bg-black border border-white/[0.1] text-[11px] text-white"
+                        >
+                          <option value="balanced">Balanced (Semantic)</option>
+                          <option value="strict">Strict Rubric</option>
+                          <option value="flexible">Flexible</option>
+                        </select>
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -66,6 +66,44 @@ def init_db() -> None:
             if "status" not in existing_asgn_cols:
                 conn.exec_driver_sql("ALTER TABLE assignments ADD COLUMN status VARCHAR(30) DEFAULT 'draft';")
 
+            # Check assignment_question_items columns
+            try:
+                res_aqi = conn.exec_driver_sql("PRAGMA table_info(assignment_question_items);")
+                existing_aqi_cols = {row[1] for row in res_aqi.fetchall()}
+                if "model_answer" not in existing_aqi_cols:
+                    conn.exec_driver_sql("ALTER TABLE assignment_question_items ADD COLUMN model_answer TEXT;")
+                if "key_concepts" not in existing_aqi_cols:
+                    conn.exec_driver_sql("ALTER TABLE assignment_question_items ADD COLUMN key_concepts TEXT;")
+                if "strictness" not in existing_aqi_cols:
+                    conn.exec_driver_sql("ALTER TABLE assignment_question_items ADD COLUMN strictness VARCHAR(20) DEFAULT 'balanced';")
+            except Exception:
+                pass
+
+            # Check assessment_questions columns
+            try:
+                res_aq = conn.exec_driver_sql("PRAGMA table_info(assessment_questions);")
+                existing_aq_cols = {row[1] for row in res_aq.fetchall()}
+                if "model_answer" not in existing_aq_cols:
+                    conn.exec_driver_sql("ALTER TABLE assessment_questions ADD COLUMN model_answer TEXT;")
+                if "key_concepts" not in existing_aq_cols:
+                    conn.exec_driver_sql("ALTER TABLE assessment_questions ADD COLUMN key_concepts TEXT;")
+                if "rubric" not in existing_aq_cols:
+                    conn.exec_driver_sql("ALTER TABLE assessment_questions ADD COLUMN rubric TEXT;")
+                if "strictness" not in existing_aq_cols:
+                    conn.exec_driver_sql("ALTER TABLE assessment_questions ADD COLUMN strictness VARCHAR(20) DEFAULT 'balanced';")
+                if "criterion_scores" not in existing_aq_cols:
+                    conn.exec_driver_sql("ALTER TABLE assessment_questions ADD COLUMN criterion_scores TEXT;")
+                if "supported_points" not in existing_aq_cols:
+                    conn.exec_driver_sql("ALTER TABLE assessment_questions ADD COLUMN supported_points TEXT;")
+                if "missing_points" not in existing_aq_cols:
+                    conn.exec_driver_sql("ALTER TABLE assessment_questions ADD COLUMN missing_points TEXT;")
+                if "confidence" not in existing_aq_cols:
+                    conn.exec_driver_sql("ALTER TABLE assessment_questions ADD COLUMN confidence FLOAT DEFAULT 0.95;")
+                if "teacher_review_required" not in existing_aq_cols:
+                    conn.exec_driver_sql("ALTER TABLE assessment_questions ADD COLUMN teacher_review_required INTEGER DEFAULT 0;")
+            except Exception:
+                pass
+
             conn.commit()
     except Exception as e:
         print(f"Database schema synchronization notice: {e}")
