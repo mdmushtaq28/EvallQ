@@ -16,8 +16,8 @@ export const Card: React.FC<CardProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`bg-[#0A0A0A] border border-white/[0.08] rounded-[24px] p-6 lg:p-7 transition-all duration-200 ${
-        hoverable ? 'hover:border-white/[0.18] hover:bg-[#0E0E0E] cursor-pointer' : ''
+      className={`bg-white dark:bg-[#0A0A0A] border border-slate-200 dark:border-white/[0.08] text-slate-900 dark:text-white rounded-[24px] p-6 lg:p-7 shadow-sm dark:shadow-none transition-all duration-200 ${
+        hoverable ? 'hover:border-slate-300 dark:hover:border-white/[0.18] hover:bg-slate-50 dark:hover:bg-[#0E0E0E] cursor-pointer' : ''
       } ${className}`}
     >
       {children}
@@ -41,9 +41,9 @@ export const CardHeader: React.FC<{
           </div>
         )}
         <div>
-          <h3 className="text-base font-normal tracking-tight text-white">{title}</h3>
+          <h3 className="text-base font-normal tracking-tight text-slate-900 dark:text-white">{title}</h3>
           {subtitle && (
-            <p className="text-xs text-[#9A9A9A] font-light mt-0.5">{subtitle}</p>
+            <p className="text-xs text-slate-500 dark:text-[#9A9A9A] font-light mt-0.5">{subtitle}</p>
           )}
         </div>
       </div>

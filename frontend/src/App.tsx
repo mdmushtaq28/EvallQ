@@ -1,5 +1,5 @@
 import React from 'react';
-import { ThemeProvider } from './context/ThemeContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
@@ -17,6 +17,7 @@ import { StudentResultPage } from './pages/StudentResultPage';
 import { AuthModal } from './components/auth/AuthModal';
 
 const MainLayout: React.FC = () => {
+  const { theme } = useTheme();
   const { activeTab, sidebarCollapsed, toggleSidebar, isAuthModalOpen, setAuthModalOpen } = useApp();
 
   const renderActivePage = () => {
@@ -52,7 +53,9 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-black text-white font-sans selection:bg-[#8052FF] selection:text-white">
+    <div className={`flex h-screen w-screen overflow-hidden ${
+      theme === 'dark' ? 'bg-black text-white' : 'bg-[#F8FAFC] text-slate-900'
+    } font-sans selection:bg-[#8052FF] selection:text-white transition-colors duration-200`}>
       {/* Navigation Sidebar */}
       <Sidebar
         collapsed={sidebarCollapsed}
@@ -68,7 +71,9 @@ const MainLayout: React.FC = () => {
         />
 
         {/* Scrollable Page Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <main className={`flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 ${
+          theme === 'dark' ? 'bg-black text-white' : 'bg-[#F8FAFC] text-slate-900'
+        }`}>
           {renderActivePage()}
         </main>
       </div>

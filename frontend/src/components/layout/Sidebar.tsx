@@ -14,8 +14,13 @@ import {
   LogOut,
   User,
   Sparkles,
+  Sun,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useTheme } from '../../context/ThemeContext';
 import type { TabType } from '../../types';
 
 interface SidebarProps {
@@ -23,7 +28,8 @@ interface SidebarProps {
   onToggleCollapse: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse }) => {
+  const { theme, setTheme, toggleTheme } = useTheme();
   const {
     activeTab,
     setActiveTab,
@@ -137,44 +143,82 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
 
   return (
     <aside
-      className={`h-screen bg-black border-r border-white/[0.08] flex flex-col transition-all duration-300 z-30 select-none ${
+      className={`h-screen border-r flex flex-col transition-all duration-300 z-30 select-none ${
+        theme === 'dark'
+          ? 'bg-black border-white/[0.08] text-white'
+          : 'bg-white border-slate-200 text-slate-900'
+      } ${
         collapsed ? 'w-20' : 'w-64'
       }`}
     >
       {/* Brand Header */}
-      <div className="p-4 sm:p-5 border-b border-white/[0.08] flex items-center justify-between">
+      <div className={`p-4 sm:p-5 border-b flex items-center justify-between ${
+        theme === 'dark' ? 'border-white/[0.08]' : 'border-slate-200'
+      }`}>
         {!collapsed ? (
-          <div className="flex items-center gap-3">
+          <>
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-[#8052FF]/15 border border-[#8052FF]/30 flex items-center justify-center text-[#8052FF]">
+                <Cpu className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center tracking-tight">
+                  <span className={`font-medium text-base ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Evall</span>
+                  <span className="font-semibold text-base text-[#8052FF]">Q</span>
+                </div>
+                <p className={`text-[10px] font-light tracking-tight ${theme === 'dark' ? 'text-[#9A9A9A]' : 'text-slate-500'}`}>
+                  Evaluate less. Teach more.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onToggleCollapse}
+              className={`p-1.5 rounded-lg transition-colors ${
+                theme === 'dark'
+                  ? 'text-[#9A9A9A] hover:text-white hover:bg-white/[0.06]'
+                  : 'text-slate-400 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+              title="Collapse sidebar"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
+          </>
+        ) : (
+          <div className="w-full flex flex-col items-center gap-2">
             <div className="w-9 h-9 rounded-full bg-[#8052FF]/15 border border-[#8052FF]/30 flex items-center justify-center text-[#8052FF]">
               <Cpu className="w-4 h-4" />
             </div>
-            <div>
-              <div className="flex items-center tracking-tight">
-                <span className="font-medium text-base text-white">Evall</span>
-                <span className="font-semibold text-base text-[#8052FF]">Q</span>
-              </div>
-              <p className="text-[10px] text-[#9A9A9A] font-light tracking-tight">
-                Evaluate less. Teach more.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="w-9 h-9 mx-auto rounded-full bg-[#8052FF]/15 border border-[#8052FF]/30 flex items-center justify-center text-[#8052FF]">
-            <Cpu className="w-4 h-4" />
+            <button
+              onClick={onToggleCollapse}
+              className={`p-1.5 rounded-lg transition-colors ${
+                theme === 'dark'
+                  ? 'text-[#9A9A9A] hover:text-white hover:bg-white/[0.06]'
+                  : 'text-slate-400 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+              title="Expand sidebar"
+            >
+              <PanelLeftOpen className="w-4 h-4" />
+            </button>
           </div>
         )}
       </div>
 
-      {/* On-Device Badge & Demo Warning */}
+      {/* On-Device Badge */}
       {!collapsed && (
-        <div className="px-4 py-2 bg-black border-b border-white/[0.08] flex items-center justify-between">
+        <div className={`px-4 py-2 border-b flex items-center justify-between ${
+          theme === 'dark' ? 'bg-black border-white/[0.08]' : 'bg-slate-50 border-slate-200'
+        }`}>
           <div className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[10px] font-mono text-[#9A9A9A] uppercase tracking-wider">
+            <span className={`text-[10px] font-mono uppercase tracking-wider ${
+              theme === 'dark' ? 'text-[#9A9A9A]' : 'text-slate-500'
+            }`}>
               {userRole === 'teacher' ? 'Instructor Portal' : 'Student Portal'}
             </span>
           </div>
-          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/[0.05] text-[#9A9A9A]">
+          <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded ${
+            theme === 'dark' ? 'bg-white/[0.05] text-[#9A9A9A]' : 'bg-slate-200 text-slate-600'
+          }`}>
             LOCAL AI
           </span>
         </div>
@@ -191,13 +235,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-full text-xs font-medium transition-all duration-150 group relative tracking-tight ${
                 isActive
                   ? 'bg-[#8052FF] text-white shadow-sm font-medium'
-                  : 'text-[#9A9A9A] hover:text-white hover:bg-white/[0.04]'
+                  : theme === 'dark'
+                    ? 'text-[#9A9A9A] hover:text-white hover:bg-white/[0.04]'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
               title={collapsed ? item.label : undefined}
             >
               <div
                 className={`transition-colors shrink-0 ${
-                  isActive ? 'text-white' : 'text-[#9A9A9A] group-hover:text-white'
+                  isActive
+                    ? 'text-white'
+                    : theme === 'dark'
+                      ? 'text-[#9A9A9A] group-hover:text-white'
+                      : 'text-slate-500 group-hover:text-slate-900'
                 }`}
               >
                 {item.icon}
@@ -211,7 +261,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
                       className={`text-[9px] px-2 py-0.5 rounded-full font-mono shrink-0 ${
                         isActive
                           ? 'bg-white/20 text-white'
-                          : 'bg-white/[0.05] text-[#9A9A9A] border border-white/[0.08]'
+                          : theme === 'dark'
+                            ? 'bg-white/[0.05] text-[#9A9A9A] border border-white/[0.08]'
+                            : 'bg-slate-100 text-slate-600 border border-slate-200'
                       }`}
                     >
                       {item.badge}
@@ -225,29 +277,110 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         })}
       </nav>
 
+      {/* Dark & Bright Theme Switcher in Toggle Sidebar */}
+      <div className={`px-3 py-2.5 border-t ${
+        theme === 'dark' ? 'border-white/[0.08]' : 'border-slate-200'
+      }`}>
+        {!collapsed ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between px-1">
+              <span className={`text-[10px] font-mono uppercase tracking-wider ${
+                theme === 'dark' ? 'text-[#9A9A9A]' : 'text-slate-500'
+              }`}>
+                Theme
+              </span>
+              <span className="text-[10px] font-medium text-[#8052FF]">
+                {theme === 'dark' ? 'Dark' : 'Bright'}
+              </span>
+            </div>
+            <div className={`p-1 rounded-xl flex items-center gap-1 ${
+              theme === 'dark'
+                ? 'bg-white/[0.04] border border-white/[0.08]'
+                : 'bg-slate-100 border border-slate-200'
+            }`}>
+              <button
+                type="button"
+                onClick={() => setTheme('dark')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
+                  theme === 'dark'
+                    ? 'bg-[#8052FF] text-white shadow-sm'
+                    : 'text-[#9A9A9A] hover:text-white'
+                }`}
+              >
+                <Moon className="w-3.5 h-3.5" />
+                <span>Dark</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme('light')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
+                  theme === 'light'
+                    ? 'bg-[#8052FF] text-white shadow-sm'
+                    : theme === 'dark'
+                      ? 'text-[#9A9A9A] hover:text-white'
+                      : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Sun className="w-3.5 h-3.5" />
+                <span>Bright</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
+                theme === 'dark'
+                  ? 'bg-white/[0.04] hover:bg-white/[0.08] text-[#FFB829] border border-white/[0.08]'
+                  : 'bg-slate-100 hover:bg-slate-200 text-[#8052FF] border border-slate-200'
+              }`}
+              title={theme === 'dark' ? 'Switch to Bright Mode' : 'Switch to Dark Mode'}
+            >
+              {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* User Profile & Sign Out Footer */}
       {!collapsed ? (
-        <div className="p-3 m-3 rounded-2xl bg-[#0A0A0A] border border-white/[0.08]">
+        <div className={`p-3 m-3 rounded-2xl border ${
+          theme === 'dark'
+            ? 'bg-[#0A0A0A] border-white/[0.08]'
+            : 'bg-slate-50 border-slate-200'
+        }`}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2 overflow-hidden">
               <div className="w-7 h-7 rounded-full bg-[#8052FF]/20 border border-[#8052FF]/30 flex items-center justify-center text-[#8052FF] shrink-0">
                 <User className="w-3.5 h-3.5" />
               </div>
               <div className="overflow-hidden">
-                <p className="text-xs font-medium text-white truncate">
+                <p className={`text-xs font-medium truncate ${
+                  theme === 'dark' ? 'text-white' : 'text-slate-900'
+                }`}>
                   {currentUser?.name || (userRole === 'teacher' ? 'Prof. Robert Chen' : 'Alex Rivera')}
                 </p>
-                <p className="text-[10px] text-[#777] font-mono truncate">
+                <p className={`text-[10px] font-mono truncate ${
+                  theme === 'dark' ? 'text-[#777]' : 'text-slate-400'
+                }`}>
                   {currentUser?.email || (userRole === 'teacher' ? 'teacher@evallq.ai' : 'student@evallq.ai')}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 pt-2 border-t border-white/[0.06]">
+          <div className={`flex items-center gap-1.5 pt-2 border-t ${
+            theme === 'dark' ? 'border-white/[0.06]' : 'border-slate-200'
+          }`}>
             <button
               onClick={() => setAuthModalOpen(true)}
-              className="flex-1 py-1 px-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[10px] text-[#9A9A9A] hover:text-white transition-colors flex items-center justify-center gap-1"
+              className={`flex-1 py-1 px-2 rounded-lg text-[10px] transition-colors flex items-center justify-center gap-1 ${
+                theme === 'dark'
+                  ? 'bg-white/[0.04] hover:bg-white/[0.08] text-[#9A9A9A] hover:text-white'
+                  : 'bg-white hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-200'
+              }`}
               title="Switch Accounts"
             >
               <Sparkles className="w-2.5 h-2.5 text-[#FFB829]" />
@@ -255,7 +388,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
             </button>
             <button
               onClick={logout}
-              className="py-1 px-2 rounded-lg bg-white/[0.04] hover:bg-rose-500/20 text-[10px] text-[#9A9A9A] hover:text-rose-400 transition-colors flex items-center justify-center gap-1"
+              className={`py-1 px-2 rounded-lg text-[10px] transition-colors flex items-center justify-center gap-1 ${
+                theme === 'dark'
+                  ? 'bg-white/[0.04] hover:bg-rose-500/20 text-[#9A9A9A] hover:text-rose-400'
+                  : 'bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200'
+              }`}
               title="Sign Out"
             >
               <LogOut className="w-2.5 h-2.5" />
@@ -264,10 +401,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
           </div>
         </div>
       ) : (
-        <div className="p-3 border-t border-white/[0.08] flex flex-col items-center gap-2">
+        <div className={`p-3 border-t flex flex-col items-center gap-2 ${
+          theme === 'dark' ? 'border-white/[0.08]' : 'border-slate-200'
+        }`}>
           <button
             onClick={() => setAuthModalOpen(true)}
-            className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-[#8052FF]/20 text-[#9A9A9A] hover:text-[#8052FF] flex items-center justify-center transition-colors"
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+              theme === 'dark'
+                ? 'bg-white/[0.04] hover:bg-[#8052FF]/20 text-[#9A9A9A] hover:text-[#8052FF]'
+                : 'bg-slate-100 hover:bg-[#8052FF]/15 text-slate-500 hover:text-[#8052FF]'
+            }`}
             title="Switch User / Sign In"
           >
             <User className="w-4 h-4" />

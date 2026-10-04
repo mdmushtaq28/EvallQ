@@ -4,13 +4,13 @@
 
 @layer base {
   :root {
-    --bg-primary: #000000;
-    --bg-surface: #080808;
-    --bg-card: #0A0A0A;
-    --border-color: rgba(255, 255, 255, 0.08);
-    --text-primary: #ffffff;
-    --text-secondary: #9a9a9a;
-    --text-tertiary: #bdbdbd;
+    --bg-primary: #f8fafc;
+    --bg-surface: #ffffff;
+    --bg-card: #ffffff;
+    --border-color: rgba(0, 0, 0, 0.08);
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --text-tertiary: #94a3b8;
     --accent-violet: #8052ff;
     --accent-gold: #ffb829;
     --accent-green: #15846e;
@@ -30,8 +30,8 @@
   }
 
   html, body {
-    background-color: #000000;
-    color: #ffffff;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     font-weight: 300;
   }
@@ -41,23 +41,23 @@
     letter-spacing: -0.02em;
   }
 
-  /* Custom sleek ultra-dark scrollbar */
+  /* Custom sleek scrollbar */
   ::-webkit-scrollbar {
     width: 5px;
     height: 5px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #000000;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(128, 128, 128, 0.25);
     border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.25);
+    background: rgba(128, 128, 128, 0.45);
   }
 }
 

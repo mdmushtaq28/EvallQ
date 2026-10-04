@@ -9,7 +9,6 @@ import {
   HardDrive,
   Mic,
   Eye,
-  Sliders,
   Sparkles,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
@@ -24,8 +23,6 @@ export const SettingsPage: React.FC = () => {
   const {
     inferenceDevice,
     setInferenceDevice,
-    isDemoMode,
-    toggleDemoMode,
     modelStatus,
     backendConnected,
     backendLoading,
@@ -67,17 +64,6 @@ export const SettingsPage: React.FC = () => {
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Configure local AI runtimes, device targets, and review device privacy boundaries.
           </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant={isDemoMode ? 'accent' : 'outline'}
-            size="sm"
-            icon={<Sliders className="w-4 h-4" />}
-            onClick={toggleDemoMode}
-          >
-            {isDemoMode ? 'Demo Mode Active' : 'Enable Demo Mode'}
-          </Button>
         </div>
       </div>
 
@@ -384,7 +370,7 @@ export const SettingsPage: React.FC = () => {
               }`}
             >
               <Sun className="w-4 h-4 text-amber-500" />
-              <span>Light Theme</span>
+              <span>Bright Theme</span>
             </button>
           </div>
         </Card>

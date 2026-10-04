@@ -1,9 +1,6 @@
 import React from 'react';
 import {
-  Sun,
-  Moon,
   WifiOff,
-  Sliders,
   Menu,
   RefreshCw,
   User,
@@ -17,15 +14,13 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const {
     activeTab,
     userRole,
     setUserRole,
     currentUser,
     setAuthModalOpen,
-    isDemoMode,
-    toggleDemoMode,
     backendConnected,
     backendLoading,
     retryBackendConnection,
@@ -93,21 +88,33 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const current = titleMap[activeTab] || { title: 'EvallQ', subtitle: 'Evaluate less. Teach more.' };
 
   return (
-    <header className="h-16 bg-black border-b border-white/[0.08] px-4 sm:px-6 flex items-center justify-between z-20 transition-colors">
+    <header className={`h-16 border-b px-4 sm:px-6 flex items-center justify-between z-20 transition-colors ${
+      theme === 'dark'
+        ? 'bg-black border-white/[0.08] text-white'
+        : 'bg-white border-slate-200 text-slate-900'
+    }`}>
       <div className="flex items-center gap-4 min-w-0">
         <button
           onClick={onToggleSidebar}
-          className="p-2 rounded-xl text-[#9A9A9A] hover:text-white hover:bg-white/[0.05] transition-colors shrink-0"
+          className={`p-2 rounded-xl transition-colors shrink-0 ${
+            theme === 'dark'
+              ? 'text-[#9A9A9A] hover:text-white hover:bg-white/[0.05]'
+              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+          }`}
           title="Toggle Navigation Menu (☰)"
         >
           <Menu className="w-5 h-5" />
         </button>
 
         <div className="min-w-0">
-          <h1 className="text-sm lg:text-base font-normal text-white tracking-tight truncate">
+          <h1 className={`text-sm lg:text-base font-normal tracking-tight truncate ${
+            theme === 'dark' ? 'text-white' : 'text-slate-900'
+          }`}>
             {current.title}
           </h1>
-          <p className="text-xs text-[#9A9A9A] font-light hidden sm:block truncate">
+          <p className={`text-xs font-light hidden sm:block truncate ${
+            theme === 'dark' ? 'text-[#9A9A9A]' : 'text-slate-500'
+          }`}>
             {current.subtitle}
           </p>
         </div>
@@ -117,7 +124,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Backend Live Connection Status */}
         {backendLoading ? (
-          <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.08] text-xs text-[#9A9A9A] font-light">
+          <div className={`hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-light ${
+            theme === 'dark'
+              ? 'bg-white/[0.03] border border-white/[0.08] text-[#9A9A9A]'
+              : 'bg-slate-100 border border-slate-200 text-slate-600'
+          }`}>
             <RefreshCw className="w-3 h-3 animate-spin text-[#8052FF]" />
             <span className="font-mono text-[11px]">Connecting...</span>
           </div>
@@ -127,7 +138,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             <span className="font-mono text-[11px]">Backend Live</span>
           </div>
         ) : (
-          <div className="hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.08] text-xs text-[#9A9A9A] font-light">
+          <div className={`hidden md:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-light ${
+            theme === 'dark'
+              ? 'bg-white/[0.03] border border-white/[0.08] text-[#9A9A9A]'
+              : 'bg-slate-100 border border-slate-200 text-slate-600'
+          }`}>
             <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
             <span className="font-mono text-[11px]">Offline</span>
             <button
@@ -143,7 +158,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         {/* Current User Quick Badge */}
         <button
           onClick={() => setAuthModalOpen(true)}
-          className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] transition-colors text-xs text-white"
+          className={`flex items-center gap-2 px-2.5 py-1 rounded-full border transition-colors text-xs ${
+            theme === 'dark'
+              ? 'bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.08] text-white'
+              : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-800'
+          }`}
           title="Click to Switch User / Sign In"
         >
           <div className="w-5 h-5 rounded-full bg-[#8052FF]/20 flex items-center justify-center text-[#8052FF]">
@@ -152,19 +171,29 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           <span className="hidden sm:inline font-medium text-xs">
             {currentUser?.name || (userRole === 'teacher' ? 'Prof. Robert Chen' : 'Alex Rivera')}
           </span>
-          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-white/[0.06] text-[#9A9A9A] uppercase">
+          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded uppercase ${
+            theme === 'dark'
+              ? 'bg-white/[0.06] text-[#9A9A9A]'
+              : 'bg-slate-200 text-slate-600'
+          }`}>
             {userRole}
           </span>
         </button>
 
         {/* Role Fast Selector: Student vs Teacher */}
-        <div className="flex items-center p-0.5 rounded-full bg-white/[0.04] border border-white/[0.08]">
+        <div className={`flex items-center p-0.5 rounded-full ${
+          theme === 'dark'
+            ? 'bg-white/[0.04] border border-white/[0.08]'
+            : 'bg-slate-100 border border-slate-200'
+        }`}>
           <button
             onClick={() => setUserRole('student')}
             className={`px-2.5 sm:px-3 py-1 rounded-full text-xs transition-all tracking-tight ${
               userRole === 'student'
                 ? 'bg-[#8052FF] text-white font-medium shadow-sm'
-                : 'text-[#9A9A9A] hover:text-white font-light'
+                : theme === 'dark'
+                  ? 'text-[#9A9A9A] hover:text-white font-light'
+                  : 'text-slate-500 hover:text-slate-900 font-light'
             }`}
           >
             Student
@@ -174,7 +203,9 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             className={`px-2.5 sm:px-3 py-1 rounded-full text-xs transition-all tracking-tight ${
               userRole === 'teacher'
                 ? 'bg-[#8052FF] text-white font-medium shadow-sm'
-                : 'text-[#9A9A9A] hover:text-white font-light'
+                : theme === 'dark'
+                  ? 'text-[#9A9A9A] hover:text-white font-light'
+                  : 'text-slate-500 hover:text-slate-900 font-light'
             }`}
           >
             Teacher
@@ -182,37 +213,14 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         </div>
 
         {/* Local First Badge */}
-        <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.08] text-xs text-[#9A9A9A]">
-          <WifiOff className="w-3 h-3 text-[#9A9A9A]" />
+        <div className={`hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full text-xs ${
+          theme === 'dark'
+            ? 'bg-white/[0.03] border border-white/[0.08] text-[#9A9A9A]'
+            : 'bg-slate-100 border border-slate-200 text-slate-600'
+        }`}>
+          <WifiOff className="w-3 h-3" />
           <span className="font-mono text-[10px] tracking-wider uppercase">LOCAL FIRST</span>
         </div>
-
-        {/* Demo Mode Toggle Button */}
-        <button
-          onClick={toggleDemoMode}
-          className={`px-2.5 sm:px-3 py-1 text-xs font-medium rounded-full border transition-all flex items-center gap-1.5 ${
-            isDemoMode
-              ? 'bg-[#FFB829]/15 text-[#FFB829] border-[#FFB829]/30'
-              : 'bg-white/[0.03] text-[#9A9A9A] border-white/[0.08] hover:text-white hover:border-white/[0.18]'
-          }`}
-          title="Toggle Demo Mode"
-        >
-          <Sliders className="w-3 h-3" />
-          <span className="hidden sm:inline">{isDemoMode ? 'Demo ON' : 'Demo'}</span>
-        </button>
-
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-full text-[#9A9A9A] hover:text-white hover:bg-white/[0.05] transition-colors"
-          title={`Switch theme`}
-        >
-          {theme === 'dark' ? (
-            <Sun className="w-4 h-4 text-[#FFB829]" />
-          ) : (
-            <Moon className="w-4 h-4 text-[#9A9A9A]" />
-          )}
-        </button>
       </div>
     </header>
   );
