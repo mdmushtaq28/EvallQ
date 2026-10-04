@@ -112,6 +112,8 @@ class RecommendationItem(BaseModel):
 
 class AssessmentEvaluationResponse(BaseModel):
     submission_id: str
+    assignment_id: Optional[str] = None
+    assignment_title: Optional[str] = None
     total_maximum_marks: float
     maximum_marks: Optional[float] = None
     ai_suggested_score: float

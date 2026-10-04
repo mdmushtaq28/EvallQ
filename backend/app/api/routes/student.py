@@ -598,8 +598,13 @@ async def get_student_submission_result(
     total_max = submission.total_maximum_marks or 0.0
     pct = round((official_score / total_max * 100.0), 1) if total_max > 0 else 0.0
 
+    asgn = db.query(Assignment).filter(Assignment.id == submission.assignment_id).first() if submission.assignment_id else None
+    asgn_title = asgn.title if asgn else (submission.original_filename.split(" - ")[0] if " - " in (submission.original_filename or "") else (submission.original_filename or "Assignment Result"))
+
     return AssessmentEvaluationResponse(
         submission_id=submission.id,
+        assignment_id=submission.assignment_id,
+        assignment_title=asgn_title,
         total_maximum_marks=total_max,
         maximum_marks=total_max,
         ai_suggested_score=submission.ai_suggested_score or 0.0,
